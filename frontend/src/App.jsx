@@ -1,34 +1,116 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import './App.css'
 
-function App() {
-  const [count, setCount] = useState(0)
+// Import pages
+import Login from './pages/Login'
+import UserDashboard from './pages/UserDashboard'
+import AdminDashboard from './pages/AdminDashboard'
+import SubmitComplaint from './pages/SubmitComplaint'
+import ComplaintDetail from './pages/ComplaintDetail'
+import UIShowcase from './pages/UIShowcase'
+
+// Import components
+import ResponsiveTester from './components/ResponsiveTester'
+
+// Import auth context
+import { AuthProvider, useAuth } from './context/AuthContext'
+
+// Import Material UI theme provider
+import { ThemeProvider } from '@mui/material/styles'
+import CssBaseline from '@mui/material/CssBaseline'
+import muiTheme from './theme/muiTheme'
+
+// Routes component that uses the auth context
+function AppRoutes() {
+  const { isAuthenticated, userRole } = useAuth()
+
+  // Protected route component
+  const ProtectedRoute = ({ children, allowedRoles }) => {
+    if (!isAuthenticated) {
+      return <Navigate to="/" replace />
+    }
+
+    if (allowedRoles && !allowedRoles.includes(userRole)) {
+      return userRole === 'user' ? 
+        <Navigate to="/user-dashboard" replace /> : 
+        <Navigate to="/admin-dashboard" replace />
+    }
+
+    return children
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <Routes>
+      {/* Public route */}
+      <Route path="/" element={isAuthenticated ? 
+        (userRole === 'user' ? 
+          <Navigate to="/user-dashboard" replace /> : 
+          <Navigate to="/admin-dashboard" replace />) : 
+        <Login />} 
+      />
+        
+      {/* User routes */}
+      <Route 
+        path="/user-dashboard" 
+        element={
+          <ProtectedRoute allowedRoles={['user']}>
+            <UserDashboard />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/submit-complaint" 
+        element={
+          <ProtectedRoute allowedRoles={['user']}>
+            <SubmitComplaint />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/complaint/:id" 
+        element={
+          <ProtectedRoute allowedRoles={['user', 'admin', 'head']}>
+            <ComplaintDetail />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Admin routes */}
+      <Route 
+        path="/admin-dashboard" 
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'head']}>
+            <AdminDashboard />
+          </ProtectedRoute>
+        } 
+      />
+        
+      {/* UI Showcase route */}
+      <Route path="/ui-showcase" element={<UIShowcase />} />
+      
+      {/* Responsive testing routes - add /responsive-test to any route */}
+      <Route path="/:path/responsive-test" element={<ResponsiveTester />} />
+      <Route path="/responsive-test" element={<ResponsiveTester />} />
+      
+      {/* Fallback route */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  )
+}
+
+// Main App component that wraps everything with the AuthProvider and ThemeProvider
+function App() {
+  return (
+    <ThemeProvider theme={muiTheme}>
+      <CssBaseline /> {/* Provides consistent baseline styles */}
+      <Router>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </Router>
+    </ThemeProvider>
   )
 }
 

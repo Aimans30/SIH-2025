@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAdminComplaints, getDepartmentStats, updateComplaintStatus } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import CustomAlert from '../components/common/Alert';
 import '../styles/Dashboard.css';
 import {
   Container,
@@ -51,6 +52,9 @@ const AdminDashboard = () => {
   const [filteredComplaints, setFilteredComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [admin, setAdmin] = useState(null);
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertSeverity, setAlertSeverity] = useState('error');
   const [filters, setFilters] = useState({
     type: '',
     status: '',
@@ -67,46 +71,45 @@ const AdminDashboard = () => {
   });
 
   useEffect(() => {
-    // Check if admin is logged in and has correct role
-    if (!user || !['admin', 'head'].includes(user.role)) {
-      navigate('/');
-      return;
+    if (user) {
+      setAdmin(user);
+      
+      // Fetch admin complaints and stats from API
+      const fetchData = async () => {
+        try {
+          // Check if user has admin/head role and department
+          if (user.department && (user.role === 'admin' || user.role === 'head')) {
+            // Get complaints for this admin's department
+            const complaintsData = await getAdminComplaints(user.department);
+            setComplaints(complaintsData);
+            setFilteredComplaints(complaintsData);
+            
+            // Get department statistics
+            const statsData = await getDepartmentStats(user.department);
+            console.log('Stats data received:', statsData);
+            
+            // Update stats with data from API
+            setStats({
+              total: statsData.totalComplaints || 0,
+              resolved: statsData.statusCounts?.Resolved || 0,
+              pending: statsData.statusCounts?.Submitted || 0,
+              inProgress: statsData.statusCounts?.['In Progress'] || 0,
+              avgResolutionTime: statsData.avgResolutionTime || 'N/A'
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching data:', error);
+          // If API fails, show empty data
+          setComplaints([]);
+          setFilteredComplaints([]);
+        } finally {
+          setLoading(false);
+        }
+      };
+    
+      fetchData();
     }
-    
-    setAdmin(user);
-    
-    // Fetch admin complaints and stats from API
-    const fetchData = async () => {
-      try {
-        // Get complaints for this admin's department
-        const complaintsData = await getAdminComplaints(user.department);
-        setComplaints(complaintsData);
-        setFilteredComplaints(complaintsData);
-        
-        // Get department statistics
-        const statsData = await getDepartmentStats(user.department);
-        console.log('Stats data received:', statsData);
-        
-        // Update stats with data from API
-        setStats({
-          total: statsData.totalComplaints || 0,
-          resolved: statsData.statusCounts?.Resolved || 0,
-          pending: statsData.statusCounts?.Submitted || 0,
-          inProgress: statsData.statusCounts?.['In Progress'] || 0,
-          avgResolutionTime: statsData.avgResolutionTime || 'N/A'
-        });
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        // If API fails, show empty data
-        setComplaints([]);
-        setFilteredComplaints([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchData();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     // Apply filters when they change
@@ -163,6 +166,11 @@ const AdminDashboard = () => {
       
       setComplaints(updatedComplaints);
       
+      // Show success message
+      setAlertMessage(`Complaint status updated to ${newStatus} successfully`);
+      setAlertSeverity('success');
+      setAlertOpen(true);
+      
       // Refresh stats after status update
       const statsData = await getDepartmentStats(admin.department);
       console.log('Updated stats data after status change:', statsData);
@@ -178,7 +186,9 @@ const AdminDashboard = () => {
       });
     } catch (error) {
       console.error('Error updating complaint status:', error);
-      alert('Failed to update complaint status. Please try again.');
+      setAlertMessage('Failed to update complaint status. Please try again.');
+      setAlertSeverity('error');
+      setAlertOpen(true);
     }
   };
 
@@ -217,6 +227,12 @@ const AdminDashboard = () => {
 
   return (
     <Box sx={{ flexGrow: 1 }}>
+      <CustomAlert 
+        open={alertOpen}
+        message={alertMessage}
+        severity={alertSeverity}
+        onClose={() => setAlertOpen(false)}
+      />
       <AppBar position="static" color="primary" elevation={0}>
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>

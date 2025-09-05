@@ -31,9 +31,15 @@ function AppRoutes() {
     }
 
     if (allowedRoles && !allowedRoles.includes(userRole)) {
-      return userRole === 'user' ? 
-        <Navigate to="/user-dashboard" replace /> : 
-        <Navigate to="/admin-dashboard" replace />
+      // Redirect based on user role
+      if (userRole === 'user') {
+        return <Navigate to="/user-dashboard" replace />
+      } else if (userRole === 'admin' || userRole === 'head') {
+        return <Navigate to="/admin-dashboard" replace />
+      } else {
+        // Default fallback if role is not recognized
+        return <Navigate to="/" replace />
+      }
     }
 
     return children
@@ -45,7 +51,9 @@ function AppRoutes() {
       <Route path="/" element={isAuthenticated ? 
         (userRole === 'user' ? 
           <Navigate to="/user-dashboard" replace /> : 
-          <Navigate to="/admin-dashboard" replace />) : 
+          (userRole === 'admin' || userRole === 'head' ? 
+            <Navigate to="/admin-dashboard" replace /> : 
+            <Login />)) : 
         <Login />} 
       />
         

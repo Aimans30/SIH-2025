@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getUserComplaints } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import '../styles/Dashboard.css';
+import LeafletHeatmap from '../components/dashboard/LeafletHeatmap';
 import {
   Container,
   Typography,
@@ -22,7 +23,8 @@ import {
   CircularProgress,
   Card,
   CardContent,
-  Divider
+  Divider,
+  Grid
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -36,17 +38,13 @@ const UserDashboard = () => {
   const { user, logout } = useAuth();
 
   useEffect(() => {
-    // Check if user is logged in and has correct role
-    if (!user || user.role !== 'user') {
-      navigate('/');
-      return;
-    }
-    
     // Fetch user complaints from API
     const fetchComplaints = async () => {
       try {
-        const data = await getUserComplaints(user.phone);
-        setComplaints(data);
+        if (user && user.phone) {
+          const data = await getUserComplaints(user.phone);
+          setComplaints(data);
+        }
       } catch (error) {
         console.error('Error fetching complaints:', error);
         // If API fails, show empty complaints list
@@ -57,7 +55,7 @@ const UserDashboard = () => {
     };
     
     fetchComplaints();
-  }, [user, navigate]);
+  }, [user]);
 
   const getStatusColor = (status) => {
     switch(status) {
@@ -107,6 +105,13 @@ const UserDashboard = () => {
       </AppBar>
       
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+        {/* Heatmap (Leaflet-based, no Google dependencies) */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid size={12}>
+            <LeafletHeatmap complaints={complaints} />
+          </Grid>
+        </Grid>
+        
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
           <Typography variant="h4" component="h1">
             My Complaints

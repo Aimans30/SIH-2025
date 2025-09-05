@@ -56,14 +56,11 @@ const ComplaintDetail = () => {
   useEffect(() => {
     // Check if user is logged in
     const loggedInUser = localStorage.getItem('user');
-    if (!loggedInUser) {
-      navigate('/');
-      return;
+    if (loggedInUser) {
+      const userData = JSON.parse(loggedInUser);
+      setUser(userData);
+      setIsAdmin(['admin', 'head'].includes(userData.role));
     }
-    
-    const userData = JSON.parse(loggedInUser);
-    setUser(userData);
-    setIsAdmin(['admin', 'head'].includes(userData.role));
     
     // Fetch complaint details from API
     const fetchComplaintDetails = async () => {

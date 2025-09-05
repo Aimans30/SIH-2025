@@ -38,18 +38,39 @@ const Login = () => {
     setError('');
     setIsLoading(true);
     
+    // Validate inputs
+    if (!phoneNumber) {
+      setError('Phone number is required');
+      setIsLoading(false);
+      return;
+    }
+    
+    if (!password) {
+      setError('Password is required');
+      setIsLoading(false);
+      return;
+    }
+    
     try {
       // Call the API service for authentication
+      console.log('Attempting login with:', { phone: phoneNumber });
       const response = await loginUser({ phone: phoneNumber, password });
+      
+      console.log('Login successful:', response);
       
       // Use the login function from AuthContext
       // This will handle storing user info and navigation
-      login(response.user);
+      login(response);
       
       // No need for manual navigation as AuthContext handles it
     } catch (error) {
       console.error('Login error:', error);
-      setError(error.message || 'Login failed. Please check your credentials.');
+      // More descriptive error message
+      if (error.message === 'Failed to fetch') {
+        setError('Unable to connect to the server. Please check your internet connection.');
+      } else {
+        setError(error.message || 'Login failed. Please check your credentials.');
+      }
     } finally {
       setIsLoading(false);
     }

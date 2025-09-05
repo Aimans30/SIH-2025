@@ -26,11 +26,13 @@ const upload = multer({
   storage,
   limits: { fileSize: parseInt(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024 }, // Default to 5MB if not specified
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-    if (allowedTypes.includes(file.mimetype)) {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'image/heic', 'image/heif'];
+    const allowedExts = ['.jpeg', '.jpg', '.png', '.webp', '.heic', '.heif'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedTypes.includes(file.mimetype) || allowedExts.includes(ext)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only JPEG and PNG are allowed.'));
+      cb(new Error('Invalid file type. Allowed: JPEG, JPG, PNG, WEBP, HEIC/HEIF'));
     }
   }
 });

@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
+const { errorHandler } = require('./middleware/errorMiddleware');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
@@ -35,6 +36,9 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/complaints', complaintRoutes);
 app.use('/api/departments', departmentRoutes);
+
+// Error handling middleware
+app.use(errorHandler);
 
 // All routes are now handled by their respective route files
 

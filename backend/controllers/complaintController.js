@@ -3,6 +3,8 @@ const complaintModel = require('../models/complaintModel');
 const departmentModel = require('../models/departmentModel');
 const userModel = require('../models/userModel');
 const storageUtils = require('../config/storage');
+const { successResponse, errorResponse } = require('../utils/responseUtil');
+const { ErrorResponse } = require('../middleware/errorMiddleware');
 
 /**
  * Complaint controller functions
@@ -13,14 +15,19 @@ const complaintController = {
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
    */
-  async submitComplaint(req, res) {
+  async submitComplaint(req, res, next) {
     try {
       const { type, description, lat, lng, address, userId } = req.body;
+      
+      // Validate required fields
+      if (!type || !description || !lat || !lng || !address || !userId) {
+        return next(new ErrorResponse('Please provide all required fields', 400));
+      }
       
       // Look up the actual user ID (UUID) based on the phone number
       const user = await userModel.getByPhone(userId);
       if (!user) {
-        return res.status(400).json({ message: 'User not found' });
+        return next(new ErrorResponse('User not found', 404));
       }
       
       // Image is now optional
@@ -33,7 +40,7 @@ const complaintController = {
         
         if (!uploadResult.success) {
           console.error('Image upload failed:', uploadResult.error);
-          return res.status(500).json({ message: `Failed to upload image: ${uploadResult.error}` });
+          return next(new ErrorResponse(`Failed to upload image: ${uploadResult.error}`, 500));
         }
         
         imageUrl = uploadResult.url;
@@ -81,36 +88,37 @@ const complaintController = {
         updated_at: new Date()
       };
       
-      // Add image fields only if an image was uploaded
-      if (imageUrl && imageKey) {
+      // Add image URL only if an image was uploaded
+      if (imageUrl) {
         complaintData.image_url = imageUrl;
-        complaintData.image_key = imageKey;
       }
       
       console.log('Creating complaint with data:', JSON.stringify(complaintData));
       
       // Create new complaint with Supabase image URL
-      const newComplaint = await complaintModel.create(complaintData);
-      
-      if (!newComplaint) {
+      const { data: createdComplaint, error: dbError } = await complaintModel.create(complaintData);
+
+      if (dbError || !createdComplaint || !createdComplaint.id) {
+        console.error('Complaint insert failed:', dbError || createdComplaint);
         // If complaint creation fails and we uploaded an image, try to delete it
         if (imageKey) {
-          await storageUtils.deleteFile(imageKey, 'images');
+          try { await storageUtils.deleteFile(imageKey, 'images'); } catch (_) {}
         }
-        return res.status(500).json({ message: 'Failed to submit complaint' });
+        const msg = dbError?.message || 'Failed to submit complaint (database insert failed)';
+        return errorResponse(res, 500, msg, dbError || undefined);
       }
-      
-      // Create response object
-      const response = { 
-        message: 'Complaint submitted successfully', 
-        complaintId: newComplaint.id  // Use the auto-generated ID from the database
+
+      // Create response data
+      const responseData = {
+        complaintId: createdComplaint.id
       };
-      if (imageUrl) response.imageUrl = imageUrl;
-      
-      res.status(201).json(response);
+      if (imageUrl) responseData.imageUrl = imageUrl;
+
+      console.log('Complaint submission success response:', responseData);
+      return successResponse(res, 201, 'Complaint submitted successfully', responseData);
     } catch (error) {
       console.error('Complaint submission error:', error);
-      res.status(500).json({ message: 'Server error' });
+      return next(error);
     }
   },
   
@@ -119,22 +127,22 @@ const complaintController = {
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
    */
-  async getUserComplaints(req, res) {
+  async getUserComplaints(req, res, next) {
     try {
       const { userId } = req.params;
       
       // Look up the actual user ID (UUID) based on the phone number
       const user = await userModel.getByPhone(userId);
       if (!user) {
-        return res.status(404).json({ message: 'User not found' });
+        return next(new ErrorResponse('User not found', 404));
       }
       
       const complaints = await complaintModel.getByUserId(user.id);
       
-      res.json(complaints);
+      return successResponse(res, 200, 'User complaints retrieved successfully', complaints);
     } catch (error) {
       console.error('Get user complaints error:', error);
-      res.status(500).json({ message: 'Server error' });
+      return next(error);
     }
   },
   
@@ -143,16 +151,16 @@ const complaintController = {
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
    */
-  async getAdminComplaints(req, res) {
+  async getAdminComplaints(req, res, next) {
     try {
       const { department } = req.params;
       
       const complaints = await complaintModel.getByDepartment(department);
       
-      res.json(complaints);
+      return successResponse(res, 200, 'Admin complaints retrieved successfully', complaints);
     } catch (error) {
       console.error('Get admin complaints error:', error);
-      res.status(500).json({ message: 'Server error' });
+      return next(error);
     }
   },
   
@@ -161,20 +169,20 @@ const complaintController = {
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
    */
-  async getComplaintById(req, res) {
+  async getComplaintById(req, res, next) {
     try {
       const { id } = req.params;
       
       const complaint = await complaintModel.getById(id);
       
       if (!complaint) {
-        return res.status(404).json({ message: 'Complaint not found' });
+        return next(new ErrorResponse('Complaint not found', 404));
       }
       
-      res.json(complaint);
+      return successResponse(res, 200, 'Complaint retrieved successfully', complaint);
     } catch (error) {
       console.error('Get complaint error:', error);
-      res.status(500).json({ message: 'Server error' });
+      return next(error);
     }
   },
   
@@ -183,16 +191,20 @@ const complaintController = {
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
    */
-  async updateComplaintStatus(req, res) {
+  async updateComplaintStatus(req, res, next) {
     try {
       const { id } = req.params;
       const { status, comment } = req.body;
+      
+      if (!status) {
+        return next(new ErrorResponse('Status is required', 400));
+      }
       
       // Get the current complaint
       const complaint = await complaintModel.getById(id);
       
       if (!complaint) {
-        return res.status(404).json({ message: 'Complaint not found' });
+        return next(new ErrorResponse('Complaint not found', 404));
       }
       
       // Update the history array
@@ -213,13 +225,10 @@ const complaintController = {
       });
       
       if (!updatedComplaint) {
-        return res.status(500).json({ message: 'Failed to update complaint' });
+        return next(new ErrorResponse('Failed to update complaint', 500));
       }
       
-      res.json({
-        message: 'Complaint status updated successfully',
-        complaint: updatedComplaint
-      });
+      return successResponse(res, 200, 'Complaint status updated successfully', updatedComplaint);
     } catch (error) {
       console.error('Update complaint error:', error);
       res.status(500).json({ message: 'Server error' });
@@ -231,7 +240,7 @@ const complaintController = {
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
    */
-  async getStatistics(req, res) {
+  async getStatistics(req, res, next) {
     try {
       const { department } = req.params;
       
@@ -267,15 +276,17 @@ const complaintController = {
         avgResolutionTime = totalResolutionTime / resolvedComplaints.length / (1000 * 60 * 60 * 24); // in days
       }
       
-      res.json({
+      const statistics = {
         totalComplaints,
         statusCounts,
         typeCounts,
         avgResolutionTime
-      });
+      };
+      
+      return successResponse(res, 200, 'Statistics retrieved successfully', statistics);
     } catch (error) {
       console.error('Get statistics error:', error);
-      res.status(500).json({ message: 'Server error' });
+      return next(error);
     }
   }
 };

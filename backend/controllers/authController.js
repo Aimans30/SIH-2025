@@ -1,5 +1,6 @@
 // authController.js - Authentication controller
 const userModel = require('../models/userModel');
+const jwtUtils = require('../config/jwt');
 
 /**
  * Authentication controller functions
@@ -21,12 +22,17 @@ const authController = {
         return res.status(401).json({ message: 'Invalid credentials' });
       }
       
-      // In a real app, you would use bcrypt to compare passwords
-      if (password !== user.password) {
+      // Verify password using bcrypt
+      const isPasswordValid = await userModel.verifyPassword(password, user.password);
+      
+      if (!isPasswordValid) {
         return res.status(401).json({ message: 'Invalid credentials' });
       }
       
-      // Return user data (excluding sensitive fields)
+      // Generate JWT token
+      const token = jwtUtils.generateToken(user);
+      
+      // Return user data and token
       res.json({
         user: {
           id: user.id,
@@ -34,7 +40,8 @@ const authController = {
           name: user.name,
           role: user.role,
           department: user.department
-        }
+        },
+        token
       });
     } catch (error) {
       console.error('Login error:', error);

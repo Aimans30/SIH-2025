@@ -1,5 +1,9 @@
 // userModel.js - User model for Supabase
 const supabase = require('../config/supabase');
+const bcrypt = require('bcrypt');
+
+// Number of salt rounds for bcrypt
+const SALT_ROUNDS = 10;
 
 /**
  * User model functions for interacting with the users table in Supabase
@@ -26,23 +30,48 @@ const userModel = {
   },
   
   /**
-   * Create a new user
+   * Create a new user with hashed password
    * @param {Object} userData - User data to insert
    * @returns {Promise<Object>} - The created user or null
    */
   async create(userData) {
-    const { data, error } = await supabase
-      .from('users')
-      .insert(userData)
-      .select()
-      .single();
-    
-    if (error) {
-      console.error('Error creating user:', error);
+    try {
+      // Hash the password before storing
+      if (userData.password) {
+        userData.password = await bcrypt.hash(userData.password, SALT_ROUNDS);
+      }
+      
+      const { data, error } = await supabase
+        .from('users')
+        .insert(userData)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error creating user:', error);
+        return null;
+      }
+      
+      return data;
+    } catch (err) {
+      console.error('Error hashing password:', err);
       return null;
     }
-    
-    return data;
+  },
+  
+  /**
+   * Verify a user's password
+   * @param {string} plainPassword - The plain text password to verify
+   * @param {string} hashedPassword - The hashed password from the database
+   * @returns {Promise<boolean>} - True if password matches, false otherwise
+   */
+  async verifyPassword(plainPassword, hashedPassword) {
+    try {
+      return await bcrypt.compare(plainPassword, hashedPassword);
+    } catch (err) {
+      console.error('Error verifying password:', err);
+      return false;
+    }
   },
   
   /**

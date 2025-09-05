@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { submitComplaint } from '../services/api';
+import Alert from '../components/common/Alert';
 import '../styles/SubmitComplaint.css';
 import { 
   Container, 
@@ -15,7 +16,6 @@ import {
   Grid, 
   Box, 
   CircularProgress, 
-  Alert, 
   IconButton 
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -33,25 +33,18 @@ const SubmitComplaint = () => {
   const [imagePreview, setImagePreview] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [errorOpen, setErrorOpen] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [successOpen, setSuccessOpen] = useState(false);
   const [user, setUser] = useState(null);
 
   useEffect(() => {
     // Check if user is logged in
     const loggedInUser = localStorage.getItem('user');
-    if (!loggedInUser) {
-      navigate('/');
-      return;
+    if (loggedInUser) {
+      const userData = JSON.parse(loggedInUser);
+      setUser(userData);
     }
-    
-    const userData = JSON.parse(loggedInUser);
-    if (userData.role !== 'user') {
-      // If not a regular user, redirect to appropriate dashboard
-      navigate(userData.role === 'admin' || userData.role === 'head' ? '/admin-dashboard' : '/');
-      return;
-    }
-    
-    setUser(userData);
     
     // Get current location
     if (navigator.geolocation) {
@@ -147,15 +140,18 @@ const SubmitComplaint = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setErrorOpen(false);
     
     // Validate form
     if (!formData.type) {
       setError('Please select an issue type');
+      setErrorOpen(true);
       return;
     }
     
     if (!formData.description) {
       setError('Please provide a description');
+      setErrorOpen(true);
       return;
     }
     
@@ -163,6 +159,7 @@ const SubmitComplaint = () => {
     
     if (!formData.location.lat || !formData.location.lng) {
       setError('Location information is missing. Please enable location services.');
+      setErrorOpen(true);
       return;
     }
     
@@ -184,6 +181,7 @@ const SubmitComplaint = () => {
       console.log('Complaint submitted successfully:', response);
       
       setSuccess(true);
+      setSuccessOpen(true);
       
       // Redirect to dashboard after 2 seconds
       setTimeout(() => {
@@ -192,9 +190,18 @@ const SubmitComplaint = () => {
     } catch (error) {
       console.error('Error submitting complaint:', error);
       setError(error.message || 'Failed to submit complaint. Please try again.');
+      setErrorOpen(true);
     } finally {
       setIsSubmitting(false);
     }
+  };
+  
+  const handleCloseError = () => {
+    setErrorOpen(false);
+  };
+  
+  const handleCloseSuccess = () => {
+    setSuccessOpen(false);
   };
 
   return (
@@ -213,13 +220,25 @@ const SubmitComplaint = () => {
           </Button>
         </Box>
         
+        <Alert 
+          severity="error" 
+          message={error}
+          open={errorOpen}
+          onClose={handleCloseError}
+        />
+        
+        <Alert 
+          severity="success" 
+          message="Complaint submitted successfully! Redirecting to dashboard..."
+          open={successOpen}
+          onClose={handleCloseSuccess}
+        />
+        
         {success ? (
           <Box textAlign="center" py={4}>
-            <Alert severity="success" sx={{ mb: 2 }}>
-              <Typography variant="h6">Thank you for your report!</Typography>
-              <Typography>Your complaint has been submitted successfully.</Typography>
-              <Typography>You will be redirected to your dashboard shortly...</Typography>
-            </Alert>
+            <Typography variant="h6">Thank you for your report!</Typography>
+            <Typography>Your complaint has been submitted successfully.</Typography>
+            <Typography>You will be redirected to your dashboard shortly...</Typography>
           </Box>
         ) : (
           <Box component="form" onSubmit={handleSubmit} noValidate>

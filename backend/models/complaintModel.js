@@ -20,7 +20,7 @@ const complaintModel = {
       for (const field of requiredFields) {
         if (!complaintData[field]) {
           console.error(`Missing required field: ${field}`);
-          return null;
+          return { data: null, error: new Error(`Missing required field: ${field}`) };
         }
       }
       
@@ -33,14 +33,14 @@ const complaintModel = {
       
       if (error) {
         console.error('Error creating complaint:', error);
-        return null;
+        return { data: null, error };
       }
       
       console.log('Complaint created successfully:', data?.id);
-      return data;
+      return { data, error: null };
     } catch (err) {
       console.error('Unexpected error creating complaint:', err);
-      return null;
+      return { data: null, error: err };
     }
   },
   

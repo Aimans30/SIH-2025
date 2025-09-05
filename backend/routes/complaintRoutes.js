@@ -2,24 +2,28 @@
 const express = require('express');
 const router = express.Router();
 const complaintController = require('../controllers/complaintController');
-const { upload } = require('../config/upload');
+const multer = require('../config/upload');
+const auth = require('../middleware/authMiddleware');
 
-// Submit complaint route
-router.post('/', upload.single('image'), complaintController.submitComplaint);
+// Get the upload middleware
+const upload = multer.upload;
 
-// Get complaints for user
-router.get('/user/:userId', complaintController.getUserComplaints);
+// Submit complaint route - requires authentication
+router.post('/', auth.verifyToken, upload.single('image'), complaintController.submitComplaint);
 
-// Get complaints for admin
-router.get('/admin/:department', complaintController.getAdminComplaints);
+// Get complaints for user - requires authentication
+router.get('/user/:userId', auth.verifyToken, complaintController.getUserComplaints);
 
-// Get complaint by ID
-router.get('/:id', complaintController.getComplaintById);
+// Get complaints for admin - requires admin or head role
+router.get('/admin/:department', auth.hasRole(['admin', 'head']), complaintController.getAdminComplaints);
 
-// Update complaint status
-router.patch('/:id', complaintController.updateComplaintStatus);
+// Get complaint by ID - requires authentication
+router.get('/:id', auth.verifyToken, complaintController.getComplaintById);
 
-// Get statistics for admin dashboard
-router.get('/stats/:department', complaintController.getStatistics);
+// Update complaint status - requires admin or head role
+router.patch('/:id', auth.hasRole(['admin', 'head']), complaintController.updateComplaintStatus);
+
+// Get statistics for admin dashboard - requires admin or head role
+router.get('/stats/:department', auth.hasRole(['admin', 'head']), complaintController.getStatistics);
 
 module.exports = router;

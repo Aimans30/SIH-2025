@@ -22,7 +22,12 @@ const unwrapResponse = async (response) => {
 // Normalize complaint fields to the shape expected by the UI
 const normalizeComplaint = (c) => {
   if (!c) return c;
-  return {
+  
+  // Log the raw complaint data to help diagnose issues
+  console.log('Raw complaint data before normalization:', c);
+  
+  // Create a normalized complaint object
+  const normalized = {
     id: c.id,
     type: c.type,
     description: c.description,
@@ -31,15 +36,27 @@ const normalizeComplaint = (c) => {
     updatedAt: c.updatedAt || c.updated_at,
     imageUrl: c.imageUrl || c.image_url,
     department: c.department,
-    // Group location fields if present
+    history: c.history || [],
+    
+    // Preserve original location fields for backward compatibility
+    location_address: c.location_address,
+    location_lat: c.location_lat,
+    location_lng: c.location_lng,
+    
+    // Group location fields into a structured object
     location: c.location || (c.location_address || c.location_lat || c.location_lng
       ? {
-          address: c.location_address,
-          lat: c.location_lat,
-          lng: c.location_lng,
+          address: c.location_address || null,
+          lat: c.location_lat ? parseFloat(c.location_lat) : null,
+          lng: c.location_lng ? parseFloat(c.location_lng) : null,
         }
-      : undefined),
+      : null),
   };
+  
+  // Log the normalized complaint data
+  console.log('Normalized complaint data:', normalized);
+  
+  return normalized;
 };
 
 // Authentication API calls
@@ -129,18 +146,54 @@ export const submitComplaint = async (complaintData) => {
 
 export const getUserComplaints = async (userId) => {
   try {
+    console.log('getUserComplaints called with userId:', userId);
     const headers = getAuthHeader();
-    const response = await fetch(`${API_URL}/complaints/user/${userId}`, { headers });
+    console.log('Auth headers:', headers);
+    
+    const url = `${API_URL}/complaints/user/${userId}`;
+    console.log('Fetching from URL:', url);
+    
+    const response = await fetch(url, { headers });
+    console.log('Response status:', response.status);
     
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to fetch complaints');
+      let errorData;
+      try {
+        errorData = await response.json();
+        console.error('Error response data:', errorData);
+      } catch (e) {
+        console.error('Failed to parse error response:', e);
+        errorData = { message: 'Unknown error' };
+      }
+      throw new Error(errorData.message || `Failed to fetch complaints (HTTP ${response.status})`);
     }
     
-    const data = await unwrapResponse(response);
+    const responseText = await response.text();
+    console.log('Raw response:', responseText);
+    
+    let data;
+    try {
+      data = JSON.parse(responseText);
+      console.log('Parsed response data:', data);
+      
+      // Check if we need to unwrap the data from our backend envelope
+      if (data && Object.prototype.hasOwnProperty.call(data, 'data')) {
+        data = data.data;
+        console.log('Unwrapped data:', data);
+      }
+    } catch (e) {
+      console.error('Failed to parse JSON response:', e);
+      throw new Error('Invalid JSON response from server');
+    }
+    
     // Ensure we return an array and normalize fields
     const list = Array.isArray(data) ? data : [];
-    return list.map(normalizeComplaint);
+    console.log('Final complaint list before normalization:', list);
+    
+    const normalizedList = list.map(normalizeComplaint);
+    console.log('Normalized complaint list:', normalizedList);
+    
+    return normalizedList;
   } catch (error) {
     console.error('Get user complaints error:', error);
     throw error;
@@ -168,16 +221,48 @@ export const getAdminComplaints = async (department) => {
 
 export const getComplaintById = async (id) => {
   try {
+    console.log(`Fetching complaint details for ID: ${id}`);
     const headers = getAuthHeader();
-    const response = await fetch(`${API_URL}/complaints/${id}`, { headers });
+    console.log('Auth headers:', headers);
+    
+    const url = `${API_URL}/complaints/${id}`;
+    console.log('Fetching from URL:', url);
+    
+    const response = await fetch(url, { headers });
+    console.log('Response status:', response.status);
     
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to fetch complaint details');
+      let errorData;
+      try {
+        errorData = await response.json();
+        console.error('Error response data:', errorData);
+      } catch (e) {
+        console.error('Failed to parse error response:', e);
+        errorData = { message: 'Unknown error' };
+      }
+      throw new Error(errorData.message || `Failed to fetch complaint details (HTTP ${response.status})`);
     }
     
-    const data = await unwrapResponse(response);
-    return normalizeComplaint(data);
+    const responseText = await response.text();
+    console.log('Raw response text length:', responseText.length);
+    
+    let data;
+    try {
+      data = JSON.parse(responseText);
+      console.log('Parsed response data:', data);
+      
+      // Check if we need to unwrap the data from our backend envelope
+      if (data && Object.prototype.hasOwnProperty.call(data, 'data')) {
+        data = data.data;
+        console.log('Unwrapped data:', data);
+      }
+    } catch (e) {
+      console.error('Failed to parse JSON response:', e);
+      throw new Error('Invalid JSON response from server');
+    }
+    
+    const normalizedData = normalizeComplaint(data);
+    return normalizedData;
   } catch (error) {
     console.error('Get complaint details error:', error);
     throw error;
@@ -186,10 +271,17 @@ export const getComplaintById = async (id) => {
 
 export const updateComplaintStatus = async (id, statusData) => {
   try {
+    console.log(`Updating complaint status for ID: ${id}`, statusData);
+    
     // Get auth headers and merge with content-type
     const authHeaders = getAuthHeader();
+    console.log('Auth headers:', authHeaders);
     
-    const response = await fetch(`${API_URL}/complaints/${id}`, {
+    const url = `${API_URL}/complaints/${id}`;
+    console.log('Request URL:', url);
+    console.log('Request body:', JSON.stringify(statusData));
+    
+    const response = await fetch(url, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -198,13 +290,41 @@ export const updateComplaintStatus = async (id, statusData) => {
       body: JSON.stringify(statusData),
     });
     
+    console.log('Response status:', response.status);
+    
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to update complaint status');
+      let errorData;
+      try {
+        errorData = await response.json();
+        console.error('Error response data:', errorData);
+      } catch (e) {
+        console.error('Failed to parse error response:', e);
+        errorData = { message: 'Unknown error' };
+      }
+      throw new Error(errorData.message || `Failed to update complaint status (HTTP ${response.status})`);
     }
     
-    const data = await unwrapResponse(response);
-    return normalizeComplaint(data);
+    const responseText = await response.text();
+    console.log('Raw response text length:', responseText.length);
+    
+    let data;
+    try {
+      data = responseText ? JSON.parse(responseText) : {};
+      console.log('Parsed response data:', data);
+      
+      // Check if we need to unwrap the data from our backend envelope
+      if (data && Object.prototype.hasOwnProperty.call(data, 'data')) {
+        data = data.data;
+        console.log('Unwrapped data:', data);
+      }
+    } catch (e) {
+      console.error('Failed to parse JSON response:', e);
+      throw new Error('Invalid JSON response from server');
+    }
+    
+    const normalizedData = normalizeComplaint(data);
+    console.log('Normalized complaint data after status update:', normalizedData);
+    return normalizedData;
   } catch (error) {
     console.error('Update complaint status error:', error);
     throw error;

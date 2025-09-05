@@ -77,11 +77,14 @@ const Login = () => {
   };
 
   return (
-    <Container maxWidth="sm" sx={{ mt: 8, mb: 4 }}>
-      <Card elevation={4}>
+    <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
+      <Card elevation={4} sx={{ width: '100%', maxWidth: '350px' }}>
         <CardContent sx={{ p: 4 }}>
           <Box textAlign="center" mb={4}>
             <Typography variant="h4" component="h1" gutterBottom>
+              CivicOne
+            </Typography>
+            <Typography variant="subtitle1" color="text.secondary" gutterBottom>
               Civic Issue Reporting Platform
             </Typography>
           </Box>
@@ -122,7 +125,12 @@ const Login = () => {
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
               placeholder={isUser ? "Enter your phone number" : "Enter admin ID"}
-              sx={{ mb: 2 }}
+              sx={{ 
+                mb: 2,
+                '& .MuiInputBase-input': {
+                  textAlign: 'center'
+                }
+              }}
             />
             
             <TextField
@@ -136,7 +144,12 @@ const Login = () => {
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              sx={{ mb: 3 }}
+              sx={{ 
+                mb: 3,
+                '& .MuiInputBase-input': {
+                  textAlign: 'center'
+                }
+              }}
             />
             
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -166,21 +179,10 @@ const Login = () => {
                 "Use ID: admin1, password: admin123"}
             </Typography>
             
-            <Box mt={3} pt={2} borderTop={1} borderColor="divider">
-              <Button 
-                component={Link} 
-                to="/ui-showcase" 
-                variant="text" 
-                size="small" 
-                color="secondary"
-              >
-                View UI Components Showcase
-              </Button>
-            </Box>
           </Box>
         </CardContent>
       </Card>
-    </Container>
+    </Box>
   );
 };
 

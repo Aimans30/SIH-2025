@@ -47,8 +47,10 @@ function AppRoutes() {
 
   return (
     <Routes>
-      {/* Public route */}
-      <Route path="/" element={isAuthenticated ? 
+      {/* Public routes */}
+      <Route path="/" element={<Login />} />
+      
+      <Route path="/login" element={isAuthenticated ? 
         (userRole === 'user' ? 
           <Navigate to="/user-dashboard" replace /> : 
           (userRole === 'admin' || userRole === 'head' ? 

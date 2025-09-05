@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getUserComplaints } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -30,32 +30,63 @@ import AddIcon from '@mui/icons-material/Add';
 import LogoutIcon from '@mui/icons-material/Logout';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import PersonIcon from '@mui/icons-material/Person';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
 const UserDashboard = () => {
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  useEffect(() => {
-    // Fetch user complaints from API
-    const fetchComplaints = async () => {
-      try {
-        if (user && user.phone) {
-          const data = await getUserComplaints(user.phone);
+  // Create a memoized fetch function that can be reused
+  const fetchComplaints = useCallback(async (isManualRefresh = false) => {
+    if (isManualRefresh) {
+      setRefreshing(true);
+    }
+    try {
+      if (user && user.phone) {
+        console.log('Fetching complaints for user:', user.phone);
+        const data = await getUserComplaints(user.phone);
+        console.log('Complaints data received:', data);
+        
+        // Check if data is valid
+        if (Array.isArray(data)) {
           setComplaints(data);
+        } else {
+          console.error('Invalid complaints data format:', data);
+          setComplaints([]);
         }
-      } catch (error) {
-        console.error('Error fetching complaints:', error);
-        // If API fails, show empty complaints list
-        setComplaints([]);
-      } finally {
-        setLoading(false);
+      } else {
+        console.warn('User or phone number missing:', user);
       }
-    };
-    
-    fetchComplaints();
+    } catch (error) {
+      console.error('Error fetching complaints:', error);
+      // If API fails, show empty complaints list
+      setComplaints([]);
+    } finally {
+      setLoading(false);
+      if (isManualRefresh) {
+        setRefreshing(false);
+      }
+    }
   }, [user]);
+  
+  // Initial fetch when component mounts
+  useEffect(() => {
+    fetchComplaints();
+  }, [fetchComplaints]);
+  
+  // Set up auto-refresh every 30 seconds
+  useEffect(() => {
+    const refreshInterval = setInterval(() => {
+      console.log('Auto-refreshing complaints data...');
+      fetchComplaints();
+    }, 30000); // 30 seconds
+    
+    // Clean up interval on component unmount
+    return () => clearInterval(refreshInterval);
+  }, [fetchComplaints]);
 
   const getStatusColor = (status) => {
     switch(status) {
@@ -86,7 +117,7 @@ const UserDashboard = () => {
       <AppBar position="static" color="primary" elevation={0}>
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Citizen Dashboard
+            CivicOne | User Dashboard
           </Typography>
           <Box display="flex" alignItems="center">
             <Box display="flex" alignItems="center" mr={2}>
@@ -113,9 +144,21 @@ const UserDashboard = () => {
         </Grid>
         
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-          <Typography variant="h4" component="h1">
-            My Complaints
-          </Typography>
+          <Box display="flex" alignItems="center">
+            <Typography variant="h4" component="h1" sx={{ mr: 2 }}>
+              My Complaints
+            </Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<RefreshIcon />}
+              onClick={() => fetchComplaints(true)}
+              disabled={refreshing}
+              sx={{ mr: 1 }}
+            >
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
+          </Box>
           <Button
             variant="contained"
             color="primary"
@@ -145,6 +188,10 @@ const UserDashboard = () => {
                     <TableCell colSpan={6} align="center">
                       <Typography variant="subtitle1" sx={{ py: 3 }}>
                         You haven't submitted any complaints yet.
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {!user ? 'User information not loaded.' : 
+                         `Logged in as: ${user.phone} (${user.role})`}
                       </Typography>
                     </TableCell>
                   </TableRow>

@@ -207,31 +207,24 @@ const complaintController = {
         return next(new ErrorResponse('Complaint not found', 404));
       }
       
-      // Update the history array
-      // Check if history exists, if not initialize as empty array
-      const currentHistory = Array.isArray(complaint.history) ? complaint.history : [];
+      console.log(`Updating complaint ${id} status to ${status}`);
       
-      const updatedHistory = [...currentHistory, {
-        status,
-        timestamp: new Date(),
-        comment: comment || `Status updated to ${status}`
-      }];
-      
-      // Update the complaint
+      // Update the complaint with only status and updated_at fields
       const updatedComplaint = await complaintModel.update(id, {
         status,
-        updated_at: new Date(),
-        history: updatedHistory
+        updated_at: new Date()
       });
       
       if (!updatedComplaint) {
+        console.error('Failed to update complaint status');
         return next(new ErrorResponse('Failed to update complaint', 500));
       }
       
+      console.log('Complaint status updated successfully:', updatedComplaint);
       return successResponse(res, 200, 'Complaint status updated successfully', updatedComplaint);
     } catch (error) {
       console.error('Update complaint error:', error);
-      res.status(500).json({ message: 'Server error' });
+      return next(error); // Use the error middleware
     }
   },
   

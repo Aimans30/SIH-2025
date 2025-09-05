@@ -146,19 +146,24 @@ const AdminDashboard = () => {
 
   const handleStatusUpdate = async (complaintId, newStatus) => {
     try {
+      console.log(`Attempting to update complaint ${complaintId} to status: ${newStatus}`);
+      
       // Send API request to update status
-      await updateComplaintStatus(complaintId, { 
+      const updatedComplaint = await updateComplaintStatus(complaintId, { 
         status: newStatus,
         comment: `Status updated to ${newStatus} by ${admin.role}`
       });
       
-      // Update local state
+      console.log('Received updated complaint data:', updatedComplaint);
+      
+      // Update local state with the returned data
       const updatedComplaints = complaints.map(complaint => {
         if (complaint.id === complaintId) {
           return {
             ...complaint,
-            status: newStatus,
-            updatedAt: new Date().toISOString()
+            ...updatedComplaint, // Use all fields from the updated complaint
+            status: newStatus, // Ensure status is set correctly
+            updatedAt: updatedComplaint.updatedAt || updatedComplaint.updated_at || new Date().toISOString()
           };
         }
         return complaint;
@@ -172,18 +177,23 @@ const AdminDashboard = () => {
       setAlertOpen(true);
       
       // Refresh stats after status update
-      const statsData = await getDepartmentStats(admin.department);
-      console.log('Updated stats data after status change:', statsData);
-      
-      // Map the backend response to our frontend state
-      setStats({
-        total: statsData.totalComplaints || 0,
-        resolved: statsData.statusCounts?.Resolved || 0,
-        pending: statsData.statusCounts?.Submitted || 0,
-        inProgress: statsData.statusCounts?.['In Progress'] || 0,
-        avgResolutionTime: statsData.avgResolutionTime ? `${statsData.avgResolutionTime.toFixed(1)} days` : '0 days',
-        escalated: statsData.statusCounts?.Escalated || 0
-      });
+      try {
+        const statsData = await getDepartmentStats(admin.department);
+        console.log('Updated stats data after status change:', statsData);
+        
+        // Map the backend response to our frontend state
+        setStats({
+          total: statsData.totalComplaints || 0,
+          resolved: statsData.statusCounts?.Resolved || 0,
+          pending: statsData.statusCounts?.Submitted || 0,
+          inProgress: statsData.statusCounts?.['In Progress'] || 0,
+          avgResolutionTime: statsData.avgResolutionTime ? `${statsData.avgResolutionTime.toFixed(1)} days` : '0 days',
+          escalated: statsData.statusCounts?.Escalated || 0
+        });
+      } catch (statsError) {
+        console.error('Error fetching updated stats:', statsError);
+        // Don't show an error to the user since the status update was successful
+      }
     } catch (error) {
       console.error('Error updating complaint status:', error);
       setAlertMessage('Failed to update complaint status. Please try again.');
@@ -236,7 +246,7 @@ const AdminDashboard = () => {
       <AppBar position="static" color="primary" elevation={0}>
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            {admin?.department} Department Dashboard
+            CivicOne | {admin?.department} Department
           </Typography>
           <Box display="flex" alignItems="center">
             <Box display="flex" alignItems="center" mr={2}>
@@ -408,20 +418,19 @@ const AdminDashboard = () => {
               {filteredComplaints.length} {filteredComplaints.length === 1 ? 'complaint' : 'complaints'} found
             </Typography>
           </Box>
-          
-          <TableContainer sx={{ maxHeight: 'calc(100vh - 400px)' }}>
-            <Table stickyHeader aria-label="complaints table">
+          <TableContainer sx={{ maxHeight: 'calc(100vh - 350px)', overflowX: 'auto' }}>
+            <Table stickyHeader aria-label="complaints table" sx={{ minWidth: 1200 }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>ID</TableCell>
-                  <TableCell>Image</TableCell>
-                  <TableCell>Type</TableCell>
-                  <TableCell>Description</TableCell>
-                  <TableCell>Location</TableCell>
-                  <TableCell>Date Reported</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Priority</TableCell>
-                  <TableCell align="center">Actions</TableCell>
+                  <TableCell width="80px">ID</TableCell>
+                  <TableCell width="80px">Image</TableCell>
+                  <TableCell width="120px">Type</TableCell>
+                  <TableCell width="350px">Description</TableCell>
+                  <TableCell width="250px">Location</TableCell>
+                  <TableCell width="100px">Date</TableCell>
+                  <TableCell width="120px">Status</TableCell>
+                  <TableCell width="100px">Priority</TableCell>
+                  <TableCell width="150px" align="center">Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -437,7 +446,22 @@ const AdminDashboard = () => {
                   </TableRow>
                 ) : (
                   filteredComplaints.map(complaint => (
-                    <TableRow key={complaint.id} hover>
+                    <TableRow 
+                      key={complaint.id} 
+                      hover
+                      sx={{
+                        '&:nth-of-type(odd)': {
+                          backgroundColor: 'rgba(0, 0, 0, 0.02)',
+                        },
+                        '&:hover': {
+                          backgroundColor: 'rgba(0, 0, 0, 0.04) !important',
+                        },
+                        '& > td': { 
+                          py: 2,
+                          verticalAlign: 'top' 
+                        }
+                      }}
+                    >
                       <TableCell>{complaint.id}</TableCell>
                       <TableCell>
                         {complaint.image_url ? (
@@ -471,11 +495,39 @@ const AdminDashboard = () => {
                         )}
                       </TableCell>
                       <TableCell>{complaint.type}</TableCell>
-                      <TableCell sx={{ maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {complaint.description}
+                      <TableCell sx={{ minWidth: '250px', maxWidth: '350px' }}>
+                        <Typography 
+                          sx={{ 
+                            display: '-webkit-box',
+                            WebkitLineClamp: 3,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            lineHeight: 1.2,
+                            maxHeight: '3.6em'
+                          }}
+                          title={complaint.description} // Shows full text on hover
+                        >
+                          {complaint.description}
+                        </Typography>
                       </TableCell>
-                      <TableCell sx={{ maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {complaint.location ? complaint.location.address : 'No location data'}
+                      <TableCell sx={{ minWidth: '180px', maxWidth: '250px' }}>
+                        <Typography 
+                          sx={{ 
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            lineHeight: 1.2,
+                            maxHeight: '2.4em'
+                          }}
+                          title={complaint.location ? complaint.location.address : 
+                                 complaint.location_address ? complaint.location_address : 'No location data'}
+                        >
+                          {complaint.location ? complaint.location.address : 
+                           complaint.location_address ? complaint.location_address : 'No location data'}
+                        </Typography>
                       </TableCell>
                       <TableCell>{complaint.created_at ? new Date(complaint.created_at).toLocaleDateString() : 'Unknown date'}</TableCell>
                       <TableCell>

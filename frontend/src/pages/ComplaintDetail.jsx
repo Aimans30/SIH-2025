@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getComplaintById, updateComplaintStatus } from '../services/api';
 import '../styles/ComplaintDetail.css';
+import ComplaintLocationMap from '../components/maps/ComplaintLocationMap';
 import {
   Container,
   Typography,
@@ -31,18 +32,7 @@ import CategoryIcon from '@mui/icons-material/Category';
 import DescriptionIcon from '@mui/icons-material/Description';
 import DepartmentIcon from '@mui/icons-material/AccountBalance';
 
-// Map container style
-const mapContainerStyle = {
-  width: '100%',
-  height: '300px',
-  borderRadius: '4px'
-};
-
-// Default center (India)
-const defaultCenter = {
-  lat: 20.5937,
-  lng: 78.9629
-};
+// Map container style is now handled in the ComplaintLocationMap component
 
 const ComplaintDetail = () => {
   const { id } = useParams();
@@ -51,7 +41,7 @@ const ComplaintDetail = () => {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [mapCenter, setMapCenter] = useState(defaultCenter);
+  // Map center is now handled in the ComplaintLocationMap component
 
   useEffect(() => {
     // Check if user is logged in
@@ -68,13 +58,7 @@ const ComplaintDetail = () => {
         const complaintData = await getComplaintById(id);
         setComplaint(complaintData);
         
-        // Set map center if location coordinates are available
-        if (complaintData && complaintData.location_lat && complaintData.location_lng) {
-          setMapCenter({
-            lat: parseFloat(complaintData.location_lat),
-            lng: parseFloat(complaintData.location_lng)
-          });
-        }
+        // Map center is now handled in the ComplaintLocationMap component
       } catch (error) {
         console.error('Error fetching complaint details:', error);
         // Complaint not found or error
@@ -111,11 +95,18 @@ const ComplaintDetail = () => {
           comment = 'Status updated';
       }
       
+      console.log(`Updating complaint ${complaint.id} status to ${newStatus}`);
+      
       // Send API request to update status
       const response = await updateComplaintStatus(complaint.id, { status: newStatus, comment });
       
+      console.log('Status update response:', response);
+      
       // Update local state with the response data
-      setComplaint(response.complaint);
+      // The response is already normalized by the API service
+      setComplaint(response);
+      
+      console.log('Complaint state updated successfully');
     } catch (error) {
       console.error('Error updating complaint status:', error);
       alert('Failed to update complaint status. Please try again.');
@@ -163,7 +154,7 @@ const ComplaintDetail = () => {
       <Paper elevation={3} sx={{ p: 3 }}>
         <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
           <Typography variant="h4" component="h1">
-            Complaint Details
+            CivicOne | Complaint Details
           </Typography>
           <Button
             variant="outlined"
@@ -196,7 +187,9 @@ const ComplaintDetail = () => {
                   <Box display="flex" alignItems="center">
                     <AccessTimeIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
                     <Typography variant="body2" color="text.secondary">
-                      Reported: {complaint.created_at ? new Date(complaint.created_at).toLocaleString() : 'Unknown date'}
+                      Reported: {complaint.created_at || complaint.createdAt ? 
+                        new Date(complaint.created_at || complaint.createdAt).toLocaleString() : 
+                        'Unknown date'}
                     </Typography>
                   </Box>
                 </Grid>
@@ -250,26 +243,27 @@ const ComplaintDetail = () => {
                   <LocationOnIcon color="primary" sx={{ mr: 1 }} />
                   <Typography variant="h6">Location</Typography>
                 </Box>
-                <Typography variant="body1" paragraph>{complaint.location_address || 'No address available'}</Typography>
+                <Typography variant="body1" paragraph>
+                  {complaint.location?.address || complaint.location_address || 'No address available'}
+                </Typography>
                 <Typography variant="body2" color="text.secondary" mb={2}>
-                  Coordinates: {complaint.location_lat ? complaint.location_lat.toFixed(6) : '0.000000'}, {complaint.location_lng ? complaint.location_lng.toFixed(6) : '0.000000'}
+                  {((complaint.location?.lat && complaint.location?.lng) || (complaint.location_lat && complaint.location_lng)) && 
+                   ((parseFloat(complaint.location?.lat || complaint.location_lat) !== 0 && 
+                     parseFloat(complaint.location?.lng || complaint.location_lng) !== 0)) ? (
+                    `Coordinates: ${parseFloat(complaint.location?.lat || complaint.location_lat).toFixed(6)}, 
+                     ${parseFloat(complaint.location?.lng || complaint.location_lng).toFixed(6)}`
+                  ) : (
+                    'No coordinates available'
+                  )}
                 </Typography>
                 
-                {/* Google Map */}
+                {/* Leaflet Map */}
                 <Box sx={{ mt: 2, border: '1px solid #eee', borderRadius: '4px', overflow: 'hidden' }}>
-                  {/* Temporarily disable Google Maps due to API key issue */}
-                  <Box sx={{ 
-                    height: '300px', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    backgroundColor: '#f5f5f5',
-                    color: '#666'
-                  }}>
-                    <Typography variant="body2">
-                      Map view temporarily unavailable - Please configure Google Maps API key
-                    </Typography>
-                  </Box>
+                  <ComplaintLocationMap 
+                    lat={complaint.location?.lat || complaint.location_lat} 
+                    lng={complaint.location?.lng || complaint.location_lng} 
+                    address={complaint.location?.address || complaint.location_address} 
+                  />
                 </Box>
               </CardContent>
             </Card>
@@ -317,34 +311,93 @@ const ComplaintDetail = () => {
         </Grid>
         
         <Box mt={4}>
-          <Typography variant="h6" gutterBottom>Status</Typography>
-          <List>
-            {complaint.history && complaint.history.length > 0 ? complaint.history.map((event, index) => (
-              <ListItem key={index} alignItems="flex-start" sx={{ py: 1 }}>
-                <ListItemIcon>
-                  <Avatar sx={{ bgcolor: getStatusColor(event.status) === 'success' ? 'success.main' : 
-                                      getStatusColor(event.status) === 'warning' ? 'warning.main' : 'info.main' }}>
-                    {event.status.charAt(0)}
-                  </Avatar>
-                </ListItemIcon>
-                <ListItemText
-                  primary={
-                    <Box display="flex" justifyContent="space-between">
-                      <Typography variant="subtitle1">{event.status}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {new Date(event.timestamp).toLocaleString()}
-                      </Typography>
-                    </Box>
-                  }
-                  secondary={event.comment}
+          <Typography variant="h6" gutterBottom>Status Timeline</Typography>
+          
+          <Paper elevation={0} sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+              {/* Status Timeline */}
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Avatar 
+                  sx={{ 
+                    bgcolor: 'info.main',
+                    mr: 2
+                  }}
+                >
+                  S
+                </Avatar>
+                <Box sx={{ flexGrow: 1 }}>
+                  <Typography variant="subtitle1">Submitted</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {new Date(complaint.createdAt || complaint.created_at).toLocaleString()}
+                  </Typography>
+                </Box>
+                <Chip 
+                  label={complaint.status === 'Submitted' ? 'Current' : 'Completed'} 
+                  color={complaint.status === 'Submitted' ? 'primary' : 'success'} 
+                  size="small" 
+                  variant={complaint.status === 'Submitted' ? 'filled' : 'outlined'}
                 />
-              </ListItem>
-            )) : (
-              <ListItem>
-                <ListItemText primary="No history available" />
-              </ListItem>
-            )}
-          </List>
+              </Box>
+              
+              {/* In Progress Status */}
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                mb: 2,
+                opacity: ['In Progress', 'Resolved'].includes(complaint.status) ? 1 : 0.5
+              }}>
+                <Avatar 
+                  sx={{ 
+                    bgcolor: ['In Progress', 'Resolved'].includes(complaint.status) ? 'warning.main' : 'grey.400',
+                    mr: 2
+                  }}
+                >
+                  P
+                </Avatar>
+                <Box sx={{ flexGrow: 1 }}>
+                  <Typography variant="subtitle1">In Progress</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {complaint.status === 'In Progress' ? 
+                      `Updated on ${new Date(complaint.updatedAt || complaint.updated_at).toLocaleString()}` : 
+                      complaint.status === 'Resolved' ? 'Completed' : 'Pending'}
+                  </Typography>
+                </Box>
+                {complaint.status === 'In Progress' && (
+                  <Chip label="Current" color="primary" size="small" />
+                )}
+                {complaint.status === 'Resolved' && (
+                  <Chip label="Completed" color="success" size="small" variant="outlined" />
+                )}
+              </Box>
+              
+              {/* Resolved Status */}
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center',
+                opacity: complaint.status === 'Resolved' ? 1 : 0.5
+              }}>
+                <Avatar 
+                  sx={{ 
+                    bgcolor: complaint.status === 'Resolved' ? 'success.main' : 'grey.400',
+                    mr: 2
+                  }}
+                >
+                  R
+                </Avatar>
+                <Box sx={{ flexGrow: 1 }}>
+                  <Typography variant="subtitle1">Resolved</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {complaint.status === 'Resolved' ? 
+                      `Resolved on ${new Date(complaint.updatedAt || complaint.updated_at).toLocaleString()}` : 
+                      'Pending'}
+                  </Typography>
+                </Box>
+                {complaint.status === 'Resolved' && (
+                  <Chip label="Current" color="primary" size="small" />
+                )}
+              </Box>
+            </Box>
+          </Paper>
         </Box>
       </Paper>
     </Container>

@@ -7,8 +7,11 @@
 /* Base styling overrides */
 html, body {
   height: 100%;
-  margin: 0;
-  padding: 0;
+  width: 100%;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 /* Links are styled in theme.css */
@@ -27,6 +30,39 @@ body {
 #root {
   width: 100%;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Full-width container overrides */
+.MuiContainer-root {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Remove all default margins and paddings but allow content spacing */
+*, *::before, *::after {
+  box-sizing: border-box !important;
+}
+
+/* Override Material-UI container defaults only */
+.MuiContainer-root {
+  margin: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Allow typography margins for readability */
+.MuiTypography-gutterBottom {
+  margin-bottom: 0.35em !important;
+}
+
+.MuiTypography-paragraph {
+  margin-bottom: 16px !important;
 }
 
 /* Material UI overrides and enhancements */

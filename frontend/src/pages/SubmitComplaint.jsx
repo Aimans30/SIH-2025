@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { submitComplaint } from '../services/api';
 import Alert from '../components/common/Alert';
@@ -16,11 +16,19 @@ import {
   Grid, 
   Box, 
   CircularProgress, 
-  IconButton 
+  IconButton,
+  Tabs,
+  Tab,
+  Dialog,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
+import CameraAltIcon from '@mui/icons-material/CameraAlt';
+import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
+import CloseIcon from '@mui/icons-material/Close';
 
 const SubmitComplaint = () => {
   const navigate = useNavigate();
@@ -37,6 +45,11 @@ const SubmitComplaint = () => {
   const [success, setSuccess] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const [imageTab, setImageTab] = useState(0); // 0 for upload, 1 for camera
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const [stream, setStream] = useState(null);
 
   useEffect(() => {
     // Check if user is logged in
@@ -137,6 +150,77 @@ const SubmitComplaint = () => {
     setError('');
   };
 
+  // Camera handling functions
+  const handleOpenCamera = async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      setStream(mediaStream);
+      setCameraOpen(true);
+      
+      // Set timeout to ensure DOM is ready
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream;
+        }
+      }, 100);
+    } catch (err) {
+      console.error('Error accessing camera:', err);
+      setError('Unable to access camera. Please check permissions.');
+      setErrorOpen(true);
+    }
+  };
+
+  const handleCloseCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    setCameraOpen(false);
+  };
+
+  const handleCaptureImage = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const context = canvas.getContext('2d');
+      
+      // Set canvas dimensions to match video
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      // Draw video frame to canvas
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Convert canvas to blob
+      canvas.toBlob((blob) => {
+        if (blob) {
+          // Create a File object from the blob
+          const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+          
+          // Update form data
+          setFormData(prev => ({
+            ...prev,
+            image: file
+          }));
+          
+          // Create preview
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setImagePreview(reader.result);
+          };
+          reader.readAsDataURL(blob);
+          
+          // Close camera
+          handleCloseCamera();
+        }
+      }, 'image/jpeg', 0.8);
+    }
+  };
+
+  const handleTabChange = (event, newValue) => {
+    setImageTab(newValue);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -209,7 +293,7 @@ const SubmitComplaint = () => {
       <Paper elevation={3} sx={{ p: 3 }}>
         <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
           <Typography variant="h4" component="h1" gutterBottom>
-            Report a Civic Issue
+            CivicOne - Report an Issue
           </Typography>
           <Button
             variant="outlined"
@@ -280,32 +364,95 @@ const SubmitComplaint = () => {
               <Grid>
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="subtitle1" gutterBottom>
-                    Upload Image (Optional)
+                    Add Image (Optional)
                   </Typography>
-                  <Button
-                    variant="contained"
-                    component="label"
-                    startIcon={<CloudUploadIcon />}
-                    sx={{ mb: 2 }}
-                  >
-                    Choose File
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      hidden
-                    />
-                  </Button>
+                  
+                  <Tabs value={imageTab} onChange={handleTabChange} aria-label="image upload options" sx={{ mb: 2 }}>
+                    <Tab icon={<PhotoLibraryIcon />} label="Upload" />
+                    <Tab icon={<CameraAltIcon />} label="Camera" />
+                  </Tabs>
+                  
+                  {imageTab === 0 ? (
+                    <Button
+                      variant="contained"
+                      component="label"
+                      startIcon={<CloudUploadIcon />}
+                      sx={{ mb: 2 }}
+                    >
+                      Choose File
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        hidden
+                      />
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="contained"
+                      startIcon={<CameraAltIcon />}
+                      onClick={handleOpenCamera}
+                      sx={{ mb: 2 }}
+                    >
+                      Open Camera
+                    </Button>
+                  )}
                 </Box>
+                
                 {imagePreview && (
-                  <Box sx={{ mt: 2, mb: 2 }}>
+                  <Box sx={{ mt: 2, mb: 2, position: 'relative' }}>
                     <img 
                       src={imagePreview} 
                       alt="Preview" 
                       style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '4px' }} 
                     />
+                    <IconButton 
+                      size="small" 
+                      sx={{ 
+                        position: 'absolute', 
+                        top: 5, 
+                        right: 5, 
+                        bgcolor: 'rgba(255,255,255,0.7)' 
+                      }}
+                      onClick={() => {
+                        setImagePreview(null);
+                        setFormData(prev => ({ ...prev, image: null }));
+                      }}
+                    >
+                      <CloseIcon fontSize="small" />
+                    </IconButton>
                   </Box>
                 )}
+                
+                {/* Camera Dialog */}
+                <Dialog 
+                  open={cameraOpen} 
+                  onClose={handleCloseCamera}
+                  maxWidth="md"
+                  fullWidth
+                >
+                  <DialogContent>
+                    <Box sx={{ position: 'relative' }}>
+                      <video 
+                        ref={videoRef} 
+                        autoPlay 
+                        style={{ width: '100%', borderRadius: '4px' }} 
+                      />
+                      <canvas ref={canvasRef} style={{ display: 'none' }} />
+                    </Box>
+                  </DialogContent>
+                  <DialogActions>
+                    <Button onClick={handleCloseCamera}>Cancel</Button>
+                    <Button 
+                      variant="contained" 
+                      color="primary" 
+                      onClick={handleCaptureImage}
+                      startIcon={<CameraAltIcon />}
+                    >
+                      Capture
+                    </Button>
+                  </DialogActions>
+                </Dialog>
               </Grid>
               
               <Grid>

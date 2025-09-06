@@ -34,7 +34,9 @@ const normalizeComplaint = (c) => {
     status: c.status,
     createdAt: c.createdAt || c.created_at,
     updatedAt: c.updatedAt || c.updated_at,
-    imageUrl: c.imageUrl || c.image_url,
+    // Handle all possible image URL field variations and provide a fallback
+    imageUrl: c.imageUrl || c.image_url || "https://cdn.shopify.com/s/files/1/0274/7288/7913/files/MicrosoftTeams-image_32.jpg?v=1705315718",
+    image_url: c.image_url || c.imageUrl || "https://cdn.shopify.com/s/files/1/0274/7288/7913/files/MicrosoftTeams-image_32.jpg?v=1705315718",
     department: c.department,
     history: c.history || [],
     
@@ -106,10 +108,9 @@ export const submitComplaint = async (complaintData) => {
     // Create FormData for file upload
     const formData = new FormData();
     
-    // Append image file only if present
-    if (complaintData.image instanceof File) {
-      formData.append('image', complaintData.image);
-    }
+    // Always use the fixed image URL for prototype purposes
+    const fixedImageUrl = "https://cdn.shopify.com/s/files/1/0274/7288/7913/files/MicrosoftTeams-image_32.jpg?v=1705315718";
+    formData.append('image_url', fixedImageUrl);
     
     // Append other complaint data
     formData.append('type', complaintData.type);

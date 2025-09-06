@@ -246,16 +246,35 @@ const ComplaintDetail = () => {
                 <Typography variant="body1" paragraph>
                   {complaint.location?.address || complaint.location_address || 'No address available'}
                 </Typography>
-                <Typography variant="body2" color="text.secondary" mb={2}>
+                <Box display="flex" alignItems="center" mb={2}>
+                  <Typography variant="body2" color="text.secondary" mr={2}>
+                    {((complaint.location?.lat && complaint.location?.lng) || (complaint.location_lat && complaint.location_lng)) && 
+                     ((parseFloat(complaint.location?.lat || complaint.location_lat) !== 0 && 
+                       parseFloat(complaint.location?.lng || complaint.location_lng) !== 0)) ? (
+                      `Coordinates: ${parseFloat(complaint.location?.lat || complaint.location_lat).toFixed(6)}, 
+                       ${parseFloat(complaint.location?.lng || complaint.location_lng).toFixed(6)}`
+                    ) : (
+                      'No coordinates available'
+                    )}
+                  </Typography>
+                  
+                  {/* Google Maps Link Button */}
                   {((complaint.location?.lat && complaint.location?.lng) || (complaint.location_lat && complaint.location_lng)) && 
                    ((parseFloat(complaint.location?.lat || complaint.location_lat) !== 0 && 
-                     parseFloat(complaint.location?.lng || complaint.location_lng) !== 0)) ? (
-                    `Coordinates: ${parseFloat(complaint.location?.lat || complaint.location_lat).toFixed(6)}, 
-                     ${parseFloat(complaint.location?.lng || complaint.location_lng).toFixed(6)}`
-                  ) : (
-                    'No coordinates available'
+                     parseFloat(complaint.location?.lng || complaint.location_lng) !== 0)) && (
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      color="primary"
+                      startIcon={<LocationOnIcon />}
+                      href={`https://www.google.com/maps?q=${parseFloat(complaint.location?.lat || complaint.location_lat)},${parseFloat(complaint.location?.lng || complaint.location_lng)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      View in Google Maps
+                    </Button>
                   )}
-                </Typography>
+                </Box>
                 
                 {/* Leaflet Map */}
                 <Box sx={{ mt: 2, border: '1px solid #eee', borderRadius: '4px', overflow: 'hidden' }}>
@@ -273,9 +292,13 @@ const ComplaintDetail = () => {
             <Card>
               <CardMedia
                 component="img"
-                image={complaint.image_url}
+                image={complaint.image_url || complaint.imageUrl || "https://cdn.shopify.com/s/files/1/0274/7288/7913/files/MicrosoftTeams-image_32.jpg?v=1705315718"}
                 alt={`Image for complaint ${complaint.id}`}
                 sx={{ height: 300, objectFit: 'cover' }}
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = "https://cdn.shopify.com/s/files/1/0274/7288/7913/files/MicrosoftTeams-image_32.jpg?v=1705315718";
+                }}
               />
             </Card>
             

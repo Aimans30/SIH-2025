@@ -423,7 +423,6 @@ const AdminDashboard = () => {
               <TableHead>
                 <TableRow>
                   <TableCell width="80px">ID</TableCell>
-                  <TableCell width="80px">Image</TableCell>
                   <TableCell width="120px">Type</TableCell>
                   <TableCell width="350px">Description</TableCell>
                   <TableCell width="250px">Location</TableCell>
@@ -436,7 +435,7 @@ const AdminDashboard = () => {
               <TableBody>
                 {filteredComplaints.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} align="center">
+                    <TableCell colSpan={7} align="center">
                       <Box py={3}>
                         <Typography variant="subtitle1">
                           No complaints match your filters.
@@ -463,37 +462,6 @@ const AdminDashboard = () => {
                       }}
                     >
                       <TableCell>{complaint.id}</TableCell>
-                      <TableCell>
-                        {complaint.image_url ? (
-                          <Box 
-                            component="img" 
-                            src={complaint.image_url} 
-                            alt={`Complaint ${complaint.id}`}
-                            sx={{ 
-                              width: 60, 
-                              height: 60, 
-                              objectFit: 'cover', 
-                              borderRadius: 1,
-                              cursor: 'pointer'
-                            }}
-                            onClick={() => window.open(complaint.image_url, '_blank')}
-                          />
-                        ) : (
-                          <Box 
-                            sx={{ 
-                              width: 60, 
-                              height: 60, 
-                              bgcolor: 'grey.300', 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              justifyContent: 'center',
-                              borderRadius: 1
-                            }}
-                          >
-                            <Typography variant="caption" color="text.secondary">No image</Typography>
-                          </Box>
-                        )}
-                      </TableCell>
                       <TableCell>{complaint.type}</TableCell>
                       <TableCell sx={{ minWidth: '250px', maxWidth: '350px' }}>
                         <Typography 

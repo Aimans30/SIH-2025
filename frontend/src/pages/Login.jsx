@@ -129,6 +129,17 @@ const Login = () => {
                 mb: 2,
                 '& .MuiInputBase-input': {
                   textAlign: 'center'
+                },
+                '& .MuiInputBase-input::placeholder': {
+                  textAlign: 'center',
+                  opacity: 0.7
+                },
+                '& .MuiFormLabel-root': {
+                  left: 0,
+                  right: 0,
+                  textAlign: 'center',
+                  transformOrigin: 'center',
+                  width: '100%'
                 }
               }}
             />
@@ -148,6 +159,17 @@ const Login = () => {
                 mb: 3,
                 '& .MuiInputBase-input': {
                   textAlign: 'center'
+                },
+                '& .MuiInputBase-input::placeholder': {
+                  textAlign: 'center',
+                  opacity: 0.7
+                },
+                '& .MuiFormLabel-root': {
+                  left: 0,
+                  right: 0,
+                  textAlign: 'center',
+                  transformOrigin: 'center',
+                  width: '100%'
                 }
               }}
             />

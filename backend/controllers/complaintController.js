@@ -17,7 +17,7 @@ const complaintController = {
    */
   async submitComplaint(req, res, next) {
     try {
-      const { type, description, lat, lng, address, userId } = req.body;
+      const { type, description, lat, lng, address, userId, image_url } = req.body;
       
       // Validate required fields
       if (!type || !description || !lat || !lng || !address || !userId) {
@@ -30,12 +30,12 @@ const complaintController = {
         return next(new ErrorResponse('User not found', 404));
       }
       
-      // Image is now optional
-      let imageUrl = null;
+      // For prototype purposes, always use the provided image_url if available
+      let imageUrl = image_url || null;
       let imageKey = null;
       
-      // Upload image to Supabase storage if provided
-      if (req.file) {
+      // If no image_url is provided but there's a file, use the traditional upload method
+      if (!imageUrl && req.file) {
         const uploadResult = await storageUtils.uploadFile(req.file);
         
         if (!uploadResult.success) {

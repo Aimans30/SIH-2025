@@ -1,0 +1,533 @@
+/* ComplaintDetail.module.css */
+.detailContainer {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+  color: #fff;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+}
+
+.content {
+  padding: 80px 40px 40px;
+  width: 100%;
+  margin: 0;
+  max-width: none;
+}
+
+.paper {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-radius: 16px !important;
+  padding: 40px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(10px) !important;
+  color: #fff !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
+  width: 100% !important;
+  margin: 0 !important;
+  max-width: none !important;
+}
+
+.backButton {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 8px !important;
+  padding: 8px 16px !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-bottom: 20px !important;
+}
+
+.backButton:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  transform: translateY(-3px) !important;
+}
+
+.statusChip {
+  margin-left: 10px !important;
+  font-weight: 600 !important;
+}
+
+.statusSubmitted {
+  background-color: rgba(241, 196, 15, 0.2) !important;
+  color: #f1c40f !important;
+  border: 1px solid rgba(241, 196, 15, 0.3) !important;
+}
+
+.statusInProgress {
+  background-color: rgba(52, 152, 219, 0.2) !important;
+  color: #3498db !important;
+  border: 1px solid rgba(52, 152, 219, 0.3) !important;
+}
+
+.statusResolved {
+  background-color: rgba(46, 204, 113, 0.2) !important;
+  color: #2ecc71 !important;
+  border: 1px solid rgba(46, 204, 113, 0.3) !important;
+}
+
+.escalatedChip {
+  background-color: rgba(231, 76, 60, 0.2) !important;
+  color: #e74c3c !important;
+  border: 1px solid rgba(231, 76, 60, 0.3) !important;
+}
+
+.transferredChip {
+  background-color: rgba(142, 68, 173, 0.2) !important;
+  color: #9b59b6 !important;
+  border: 1px solid rgba(142, 68, 173, 0.3) !important;
+}
+
+.infoIcon {
+  margin-right: 8px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.divider {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  margin: 20px 0 !important;
+}
+
+.imageCard {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  transition: transform 0.3s ease !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  margin-bottom: 20px !important;
+}
+
+.imageCard:hover {
+  transform: scale(1.02) !important;
+}
+
+.cardMedia {
+  height: 300px !important;
+  background-size: cover !important;
+}
+
+/* Standalone image styles */
+.imageWrapper {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  padding: 0 !important;
+  margin-bottom: 40px !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+}
+
+.standAloneImage {
+  max-width: 100% !important;
+  max-height: 500px !important;
+  object-fit: contain !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
+}
+
+.mapContainer {
+  height: 350px !important;
+  width: 100% !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  margin-top: 10px !important;
+  min-width: 300px !important;
+}
+
+.adminActions {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px !important;
+  padding: 25px !important;
+  margin-top: 30px !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.statusButton {
+  margin: 0 5px !important;
+  padding: 8px 16px !important;
+}
+
+.submittedButton {
+  color: #f1c40f !important;
+  border-color: #f1c40f !important;
+}
+
+.submittedButton.active {
+  background-color: rgba(241, 196, 15, 0.2) !important;
+}
+
+.inProgressButton {
+  color: #3498db !important;
+  border-color: #3498db !important;
+}
+
+.inProgressButton.active {
+  background-color: rgba(52, 152, 219, 0.2) !important;
+}
+
+.resolvedButton {
+  color: #2ecc71 !important;
+  border-color: #2ecc71 !important;
+}
+
+.resolvedButton.active {
+  background-color: rgba(46, 204, 113, 0.2) !important;
+}
+
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 20px;
+  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+}
+
+.loadingContainer .MuiTypography-root {
+  color: #fff !important;
+}
+
+.spinner {
+  color: #3498db !important;
+}
+
+.errorContainer {
+  text-align: center;
+  padding: 40px;
+  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.errorContainer .MuiTypography-root {
+  color: #fff !important;
+}
+
+.errorIcon {
+  font-size: 60px !important;
+  color: #e74c3c !important;
+  margin-bottom: 20px !important;
+}
+
+/* Text styling overrides - Make ALL text white */
+.paper h1,
+.paper h2,
+.paper h3,
+.paper h4,
+.paper h5,
+.paper h6 {
+  color: #fff !important;
+  font-weight: 700 !important;
+}
+
+.paper .MuiTypography-root {
+  color: #fff !important;
+  font-weight: 500 !important;
+}
+
+.paper .MuiTypography-h4 {
+  font-weight: 700 !important;
+  color: #fff !important;
+}
+
+.paper .MuiTypography-h5 {
+  font-weight: 600 !important;
+  color: #fff !important;
+}
+
+.paper .MuiTypography-h6 {
+  font-weight: 600 !important;
+  color: #fff !important;
+}
+
+.paper .MuiTypography-body1 {
+  color: #fff !important;
+  font-weight: 500 !important;
+  font-size: 1.1rem !important;
+}
+
+.paper .MuiTypography-body2 {
+  color: #fff !important;
+  font-weight: 500 !important;
+}
+
+/* Override all text colors to white */
+.paper * {
+  color: #fff !important;
+}
+
+.paper p,
+.paper span,
+.paper div,
+.paper label,
+.paper input,
+.paper textarea {
+  color: #fff !important;
+}
+
+/* Specific overrides for text-secondary and other color variants */
+.paper .MuiTypography-colorTextSecondary,
+.paper [color="textSecondary"],
+.paper [color="text.secondary"] {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.imageCard .MuiTypography-root {
+  color: #fff !important;
+  font-weight: 600 !important;
+}
+
+.imageCard .MuiCardContent-root {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Responsive styles */
+/* Responsive improvements */
+@media (max-width: 1200px) {
+  .content {
+    padding: 60px 20px 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .content {
+    padding: 60px 15px 15px;
+  }
+  
+  .paper {
+    padding: 20px !important;
+  }
+  
+  .cardMedia {
+    height: 200px !important;
+  }
+  
+  /* Stack cards vertically on mobile */
+  .paper .MuiGrid-item[class*="md6"] {
+    flex-basis: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  /* Stack the three info cards vertically on mobile */
+  .paper .MuiGrid-item[class*="md2"],
+  .paper .MuiGrid-item[class*="md5"] {
+    flex-basis: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* Additional layout improvements */
+.paper .MuiGrid-container {
+  width: 100% !important;
+  margin: 0 !important;
+}
+
+.paper .MuiGrid-item {
+  padding: 16px !important;
+}
+
+/* Ensure equal height cards */
+.imageCard {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.imageCard .MuiCardContent-root {
+  flex-grow: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Limit height of info boxes in desktop view */
+@media (min-width: 960px) {
+  /* Type box */
+  .paper .MuiGrid-item[class*="md2"] .imageCard {
+    max-height: 180px !important;
+    overflow-y: auto !important;
+  }
+  
+  /* Description box */
+  .paper .MuiGrid-item[class*="md3"]:nth-of-type(2) .imageCard {
+    max-height: 180px !important;
+    overflow-y: auto !important;
+  }
+  
+  /* Location box */
+  .paper .MuiGrid-item[class*="md3"]:nth-of-type(3) .imageCard {
+    max-height: 180px !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* Fix card heights and alignment */
+.paper .MuiGrid-item .MuiCard-root {
+  height: 100% !important;
+}
+
+/* Improve button group styling */
+.adminActions .MuiButtonGroup-root {
+  flex-direction: column !important;
+}
+
+.adminActions .MuiButtonGroup-root .MuiButton-root {
+  margin-bottom: 8px !important;
+  border-radius: 8px !important;
+}
+
+.paper .MuiBox-root {
+  color: #fff !important;
+}
+
+.paper .MuiSvgIcon-root {
+  color: #3498db !important;
+}
+
+.paper .MuiButton-root {
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  font-weight: 600 !important;
+}
+
+.paper .MuiButton-root:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.paper .MuiPaper-root {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #fff !important;
+}
+
+.paper .MuiAvatar-root {
+  background-color: rgba(52, 152, 219, 0.3) !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+}
+
+.paper .MuiChip-root {
+  color: #fff !important;
+  font-weight: 600 !important;
+}
+
+/* Status Timeline Styling */
+.paper .MuiPaper-root {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.paper .MuiPaper-elevation0 {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Timeline specific overrides */
+.statusTimeline {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px !important;
+  padding: 20px !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  margin-top: 30px !important;
+}
+
+.statusTimeline .MuiTypography-root {
+  color: #fff !important;
+}
+
+.statusTimeline * {
+  color: #fff !important;
+}
+
+.statusTimeline .MuiAvatar-root {
+  background-color: rgba(52, 152, 219, 0.3) !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+}
+
+.statusTimeline .MuiChip-root {
+  background-color: rgba(52, 152, 219, 0.2) !important;
+  color: #3498db !important;
+  border: 1px solid rgba(52, 152, 219, 0.3) !important;
+}
+
+.statusTimeline .MuiChip-colorSuccess {
+  background-color: rgba(46, 204, 113, 0.2) !important;
+  color: #2ecc71 !important;
+  border: 1px solid rgba(46, 204, 113, 0.3) !important;
+}
+
+.statusTimeline .MuiChip-colorPrimary {
+  background-color: rgba(52, 152, 219, 0.2) !important;
+  color: #3498db !important;
+  border: 1px solid rgba(52, 152, 219, 0.3) !important;
+}
+
+/* Centered title for Status Timeline */
+.centeredTitle {
+  text-align: center !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+  margin-bottom: 20px !important;
+}
+
+/* Global text color override for the entire detail container */
+.detailContainer,
+.detailContainer *,
+.content,
+.content *,
+.paper,
+.paper *,
+.imageCard,
+.imageCard *,
+.statusTimeline,
+.statusTimeline *,
+.adminActions,
+.adminActions *,
+.loadingContainer,
+.loadingContainer *,
+.errorContainer,
+.errorContainer * {
+  color: #fff !important;
+}
+
+/* Exception for icons which should keep their specific colors */
+.paper .MuiSvgIcon-root,
+.imageCard .MuiSvgIcon-root,
+.statusTimeline .MuiSvgIcon-root {
+  color: #3498db !important;
+}
+
+/* Exception for chips to maintain their color coding */
+.statusTimeline .MuiChip-root {
+  color: #3498db !important;
+}
+
+.statusTimeline .MuiChip-colorSuccess {
+  color: #2ecc71 !important;
+}
+
+.statusChip {
+  color: inherit !important;
+}
+
+@media (max-width: 600px) {
+  .statusButton {
+    padding: 6px 12px !important;
+    font-size: 0.8rem !important;
+  }
+  
+  .content {
+    padding: 60px 10px 10px !important;
+  }
+}

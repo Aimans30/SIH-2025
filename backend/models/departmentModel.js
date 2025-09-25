@@ -1,8 +1,39 @@
-// departmentModel.js - Department model for Supabase
-const supabase = require('../config/supabase');
+// departmentModel.js - Department model for MongoDB
+const mongoose = require('mongoose');
+
+// Define the department schema
+const departmentSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: [true, 'Department name is required'],
+    unique: true,
+    trim: true
+  },
+  head_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  description: {
+    type: String,
+    default: ''
+  },
+  created_at: {
+    type: Date,
+    default: Date.now
+  }
+}, {
+  timestamps: { 
+    createdAt: 'created_at', 
+    updatedAt: 'updated_at' 
+  }
+});
+
+// Create the Department model
+const Department = mongoose.model('Department', departmentSchema);
 
 /**
- * Department model functions for interacting with the departments table in Supabase
+ * Department model functions for interacting with the departments collection in MongoDB
  */
 const departmentModel = {
   /**
@@ -10,16 +41,13 @@ const departmentModel = {
    * @returns {Promise<Array>} - Array of departments
    */
   async getAll() {
-    const { data, error } = await supabase
-      .from('departments')
-      .select('*');
-    
-    if (error) {
+    try {
+      const departments = await Department.find().lean();
+      return departments;
+    } catch (error) {
       console.error('Error fetching all departments:', error);
       return [];
     }
-    
-    return data;
   },
   
   /**
@@ -28,18 +56,13 @@ const departmentModel = {
    * @returns {Promise<Object>} - The department object or null
    */
   async getById(id) {
-    const { data, error } = await supabase
-      .from('departments')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) {
+    try {
+      const department = await Department.findById(id).lean();
+      return department;
+    } catch (error) {
       console.error('Error fetching department by ID:', error);
       return null;
     }
-    
-    return data;
   },
   
   /**
@@ -48,18 +71,13 @@ const departmentModel = {
    * @returns {Promise<Object>} - The department object or null
    */
   async getByName(name) {
-    const { data, error } = await supabase
-      .from('departments')
-      .select('*')
-      .eq('name', name)
-      .single();
-    
-    if (error) {
+    try {
+      const department = await Department.findOne({ name }).lean();
+      return department;
+    } catch (error) {
       console.error('Error fetching department by name:', error);
       return null;
     }
-    
-    return data;
   },
   
   /**
@@ -68,21 +86,22 @@ const departmentModel = {
    * @returns {Promise<Object>} - The department with head user details or null
    */
   async getDepartmentWithHead(id) {
-    const { data, error } = await supabase
-      .from('departments')
-      .select(`
-        *,
-        head:head_id(*)
-      `)
-      .eq('id', id)
-      .single();
-    
-    if (error) {
+    try {
+      const department = await Department.findById(id)
+        .populate('head_id')
+        .lean();
+      
+      if (!department) return null;
+      
+      // Restructure to match the expected format from Supabase
+      return {
+        ...department,
+        head: department.head_id
+      };
+    } catch (error) {
       console.error('Error fetching department with head:', error);
       return null;
     }
-    
-    return data;
   },
   
   /**
@@ -91,18 +110,14 @@ const departmentModel = {
    * @returns {Promise<Object>} - The created department or null
    */
   async create(departmentData) {
-    const { data, error } = await supabase
-      .from('departments')
-      .insert(departmentData)
-      .select()
-      .single();
-    
-    if (error) {
+    try {
+      const newDepartment = new Department(departmentData);
+      const savedDepartment = await newDepartment.save();
+      return savedDepartment.toObject();
+    } catch (error) {
       console.error('Error creating department:', error);
       return null;
     }
-    
-    return data;
   },
   
   /**
@@ -112,19 +127,33 @@ const departmentModel = {
    * @returns {Promise<Object>} - The updated department or null
    */
   async update(id, updateData) {
-    const { data, error } = await supabase
-      .from('departments')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) {
+    try {
+      const updatedDepartment = await Department.findByIdAndUpdate(
+        id,
+        updateData,
+        { new: true }
+      ).lean();
+      
+      return updatedDepartment;
+    } catch (error) {
       console.error('Error updating department:', error);
       return null;
     }
-    
-    return data;
+  },
+  
+  /**
+   * Delete a department
+   * @param {string} id - The department ID
+   * @returns {Promise<boolean>} - True if deleted, false otherwise
+   */
+  async delete(id) {
+    try {
+      const result = await Department.findByIdAndDelete(id);
+      return !!result;
+    } catch (error) {
+      console.error('Error deleting department:', error);
+      return false;
+    }
   }
 };
 

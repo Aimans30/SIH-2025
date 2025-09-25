@@ -2,7 +2,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import './App.css'
 
 // Import pages
+import HomePage from './pages/HomePage'
 import Login from './pages/Login'
+import Signup from './pages/Signup'
 import UserDashboard from './pages/UserDashboard'
 import AdminDashboard from './pages/AdminDashboard'
 import SubmitComplaint from './pages/SubmitComplaint'
@@ -11,18 +13,41 @@ import UIShowcase from './pages/UIShowcase'
 
 // Import components
 import ResponsiveTester from './components/ResponsiveTester'
+import Favicon from './components/common/Favicon'
 
 // Import auth context
 import { AuthProvider, useAuth } from './context/AuthContext'
 
-// Import Material UI theme provider
-import { ThemeProvider } from '@mui/material/styles'
-import CssBaseline from '@mui/material/CssBaseline'
-import muiTheme from './theme/muiTheme'
-
 // Routes component that uses the auth context
 function AppRoutes() {
-  const { isAuthenticated, userRole } = useAuth()
+  const { isAuthenticated, userRole, isLoading } = useAuth()
+
+  // Show loading screen while checking authentication
+  if (isLoading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        background: 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)',
+        color: 'white'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ 
+            width: '40px', 
+            height: '40px', 
+            border: '3px solid rgba(255, 255, 255, 0.1)', 
+            borderRadius: '50%', 
+            borderTopColor: '#3498db', 
+            animation: 'spin 1s ease-in-out infinite',
+            margin: '0 auto 20px'
+          }}></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    )
+  }
 
   // Protected route component
   const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -48,7 +73,9 @@ function AppRoutes() {
   return (
     <Routes>
       {/* Public routes */}
-      <Route path="/" element={<Login />} />
+      <Route path="/" element={<HomePage />} />
+      
+      <Route path="/signup" element={<Signup />} />
       
       <Route path="/login" element={isAuthenticated ? 
         (userRole === 'user' ? 
@@ -110,17 +137,15 @@ function AppRoutes() {
   )
 }
 
-// Main App component that wraps everything with the AuthProvider and ThemeProvider
+// Main App component that wraps everything with the AuthProvider
 function App() {
   return (
-    <ThemeProvider theme={muiTheme}>
-      <CssBaseline /> {/* Provides consistent baseline styles */}
-      <Router>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
-      </Router>
-    </ThemeProvider>
+    <Router>
+      <Favicon />
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </Router>
   )
 }
 

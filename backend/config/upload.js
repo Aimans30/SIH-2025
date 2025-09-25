@@ -10,8 +10,8 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
+// Configure multer for file uploads to disk (after validation)
+const diskStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadsDir);
   },
@@ -22,19 +22,39 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({
-  storage,
-  limits: { fileSize: parseInt(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024 }, // Default to 5MB if not specified
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'image/heic', 'image/heif'];
-    const allowedExts = ['.jpeg', '.jpg', '.png', '.webp', '.heic', '.heif'];
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (allowedTypes.includes(file.mimetype) || allowedExts.includes(ext)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Invalid file type. Allowed: JPEG, JPG, PNG, WEBP, HEIC/HEIF'));
-    }
+// Configure multer for memory storage (for Gemini API validation)
+const memoryStorage = multer.memoryStorage();
+
+// Common file filter for both storage types
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'image/heic', 'image/heif'];
+  const allowedExts = ['.jpeg', '.jpg', '.png', '.webp', '.heic', '.heif'];
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (allowedTypes.includes(file.mimetype) || allowedExts.includes(ext)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Allowed: JPEG, JPG, PNG, WEBP, HEIC/HEIF'));
   }
+};
+
+// Common file size limit
+const fileSizeLimit = parseInt(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024; // Default to 5MB if not specified
+
+// Create multer instances for different storage types
+const uploadToDisk = multer({
+  storage: diskStorage,
+  limits: { fileSize: fileSizeLimit },
+  fileFilter
 });
 
-module.exports = { upload, uploadsDir };
+const uploadToMemory = multer({
+  storage: memoryStorage,
+  limits: { fileSize: fileSizeLimit },
+  fileFilter
+});
+
+module.exports = { 
+  uploadToDisk, 
+  uploadToMemory, 
+  uploadsDir 
+};

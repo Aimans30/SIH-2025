@@ -26,16 +26,16 @@ const escalationService = {
           comment: 'Complaint escalated due to delay'
         }];
         
-        const updatedComplaint = await complaintModel.update(complaint.id, {
+        const updatedComplaint = await complaintModel.update(complaint._id, {
           escalated: true,
           updated_at: new Date(),
           history: updatedHistory
         });
         
         if (updatedComplaint) {
-          console.log(`Escalated complaint ${complaint.id}`);
+          console.log(`Escalated complaint ${complaint._id}`);
         } else {
-          console.error(`Error escalating complaint ${complaint.id}`);
+          console.error(`Error escalating complaint ${complaint._id}`);
         }
       }
       

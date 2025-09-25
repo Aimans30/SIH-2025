@@ -17,7 +17,11 @@ const HomePage = () => {
         backgroundColor: '#ffffff',
         margin: 0,
         padding: 0,
-        overflow: 'hidden'
+        overflow: 'hidden',
+        position: 'relative',
+        left: 0,
+        right: 0,
+        top: 0
       }}
     >
       <Navbar />

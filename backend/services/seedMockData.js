@@ -1,32 +1,59 @@
-// seedMockData.js - Script to insert mock data into Supabase tables
+// seedMockData.js - Script to insert mock data into MongoDB collections
 require('dotenv').config();
-const supabase = require('../config/supabase');
+const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
+
+// MongoDB connection URI
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/civic-complaints';
+
+// Import models
+const userModel = require('../models/userModel');
+const departmentModel = require('../models/departmentModel');
+const complaintModel = require('../models/complaintModel');
+
+// Get the Mongoose models directly from the model files
+const User = mongoose.model('User');
+const Department = mongoose.model('Department');
+const Complaint = mongoose.model('Complaint');
+
+// Number of salt rounds for bcrypt
+const SALT_ROUNDS = 10;
+
+/**
+ * Connect to MongoDB
+ */
+async function connectToMongoDB() {
+  try {
+    // Removed deprecated options
+    await mongoose.connect(MONGODB_URI);
+    console.log('Connected to MongoDB');
+  } catch (error) {
+    console.error('Error connecting to MongoDB:', error.message);
+    throw error;
+  }
+}
 
 /**
  * Mock data seeding functions
  */
 const seedMockData = {
   /**
-   * Seed users table with mock data
+   * Seed users collection with mock data
    */
   async seedUsers() {
     try {
-      console.log('Seeding users table with mock data...');
+      console.log('Seeding users collection with mock data...');
       
-      // First, let's check the structure of the users table
-      const { data: tableInfo, error: tableError } = await supabase
-        .from('users')
-        .select('*')
-        .limit(1);
+      // Check if users already exist
+      const existingCount = await User.countDocuments();
+      console.log(`Found ${existingCount} existing users`);
       
-      if (tableError) {
-        console.error('Error checking users table structure:', tableError.message);
-        return null;
+      if (existingCount > 0) {
+        console.log('Users already exist, skipping seeding');
+        return await User.find();
       }
       
-      console.log('Users table structure:', Object.keys(tableInfo[0] || {}));
-      
-      // Create users based on the exact table structure: id, phone, role, department, created_at, password, name
+      // Create users
       const users = [
         { 
           name: 'Regular User 1',
@@ -73,50 +100,42 @@ const seedMockData = {
         }
       ];
       
-      // Try to insert without deleting first (to avoid RLS issues)
-      const { data, error: insertError } = await supabase
-        .from('users')
-        .insert(users)
-        .select();
+      // Hash passwords before inserting
+      const usersWithHashedPasswords = await Promise.all(users.map(async (user) => {
+        const hashedPassword = await bcrypt.hash(user.password, SALT_ROUNDS);
+        return { ...user, password: hashedPassword };
+      }));
       
-      if (insertError) {
-        console.error('Error seeding users:', insertError.message);
-        return null;
-      } else {
-        console.log(`${data.length} users inserted successfully`);
-        return data;
-      }
+      // Insert users
+      const result = await User.insertMany(usersWithHashedPasswords);
+      console.log(`${result.length} users inserted successfully`);
+      return result;
     } catch (error) {
       console.error('Error in seedUsers:', error.message);
     }
   },
   
   /**
-   * Seed departments table with mock data
+   * Seed departments collection with mock data
    */
   async seedDepartments(users) {
     try {
-      console.log('Seeding departments table with mock data...');
+      console.log('Seeding departments collection with mock data...');
       
-      // First, check if we can access the departments table
-      const { data: tableInfo, error: tableError } = await supabase
-        .from('departments')
-        .select('*');
+      // Check if departments already exist
+      const existingCount = await Department.countDocuments();
+      console.log(`Found ${existingCount} existing departments`);
       
-      if (tableError) {
-        console.error('Error checking departments table structure:', tableError.message);
-        console.log('Note: You may need to disable Row Level Security (RLS) for the departments table in Supabase');
-        return null;
+      if (existingCount > 0) {
+        console.log('Departments already exist, skipping seeding');
+        return await Department.find();
       }
-      
-      console.log('Departments table structure:', Object.keys(tableInfo[0] || {}));
-      console.log(`Found ${tableInfo.length} existing departments`);
       
       // Find head users if we have users data
       const roadsHeadUser = users?.find(user => user.role === 'head' && user.department === 'Roads');
       const sanitationHeadUser = users?.find(user => user.role === 'head' && user.department === 'Sanitation');
       
-      // Create departments based on the exact table structure: id, name, head_id
+      // Create departments
       const departmentsToCreate = [
         { 
           name: 'Roads',
@@ -140,34 +159,10 @@ const seedMockData = {
         }
       ];
       
-      // Filter out departments that already exist
-      const existingDepartmentNames = tableInfo.map(dept => dept.name);
-      const newDepartments = departmentsToCreate.filter(dept => !existingDepartmentNames.includes(dept.name));
-      
-      if (newDepartments.length === 0) {
-        console.log('All departments already exist, skipping insertion');
-        return tableInfo; // Return existing departments
-      }
-      
-      console.log(`Inserting ${newDepartments.length} new departments...`);
-      
-      // Try to insert only new departments
-      const { data, error: insertError } = await supabase
-        .from('departments')
-        .insert(newDepartments)
-        .select();
-      
-      if (insertError) {
-        console.error('Error seeding departments:', insertError.message);
-        console.log('To fix this issue:');
-        console.log('1. Go to your Supabase dashboard');
-        console.log('2. Navigate to Authentication > Policies');
-        console.log('3. Temporarily disable RLS for the departments table or add appropriate policies');
-        return tableInfo; // Return existing departments even if insert fails
-      } else {
-        console.log(`${data.length} departments inserted successfully`);
-        return [...tableInfo, ...data]; // Return both existing and newly inserted departments
-      }
+      // Insert departments
+      const result = await Department.insertMany(departmentsToCreate);
+      console.log(`${result.length} departments inserted successfully`);
+      return result;
     } catch (error) {
       console.error('Error in seedDepartments:', error.message);
       return null;
@@ -175,23 +170,23 @@ const seedMockData = {
   },
   
   /**
-   * Seed complaints table with mock data
+   * Seed complaints collection with mock data
    */
   async seedComplaints(users) {
     try {
-      console.log('Seeding complaints table with mock data...');
+      console.log('Seeding complaints collection with mock data...');
+      
+      // Check if complaints already exist
+      const existingCount = await Complaint.countDocuments();
+      console.log(`Found ${existingCount} existing complaints`);
+      
+      if (existingCount > 0) {
+        console.log('Complaints already exist, skipping seeding');
+        return await Complaint.find();
+      }
       
       if (!users || users.length === 0) {
-        const { data: fetchedUsers, error: fetchError } = await supabase
-          .from('users')
-          .select('*');
-        
-        if (fetchError) {
-          console.error('Error fetching users:', fetchError.message);
-          return;
-        }
-        
-        users = fetchedUsers;
+        users = await User.find();
       }
       
       // Find regular users for complaints
@@ -202,21 +197,7 @@ const seedMockData = {
         return;
       }
       
-      // Check the actual table structure
-      const { data: tableInfo, error: tableError } = await supabase
-        .from('complaints')
-        .select('*')
-        .limit(1);
-      
-      if (tableError) {
-        console.error('Error checking complaints table structure:', tableError.message);
-        console.log('Note: You may need to disable Row Level Security (RLS) for the complaints table in Supabase');
-        return;
-      }
-      
-      console.log('Complaints table structure:', Object.keys(tableInfo[0] || {}));
-      
-      // Create complaints based on the exact table structure: id, status, department, escalated, created_at, updated_at, location_address
+      // Create complaints
       const complaints = [
         {
           user_id: regularUsers[0].id,
@@ -253,23 +234,10 @@ const seedMockData = {
         }
       ];
       
-      // Try to insert without deleting first (to avoid RLS issues)
-      const { data, error: insertError } = await supabase
-        .from('complaints')
-        .insert(complaints)
-        .select();
-      
-      if (insertError) {
-        console.error('Error seeding complaints:', insertError.message);
-        console.log('To fix this issue:');
-        console.log('1. Go to your Supabase dashboard');
-        console.log('2. Navigate to Authentication > Policies');
-        console.log('3. Temporarily disable RLS for the complaints table or add appropriate policies');
-        return null;
-      } else {
-        console.log(`${data.length} complaints inserted successfully`);
-        return data;
-      }
+      // Insert complaints
+      const result = await Complaint.insertMany(complaints);
+      console.log(`${result.length} complaints inserted successfully`);
+      return result;
     } catch (error) {
       console.error('Error in seedComplaints:', error.message);
       return null;
@@ -281,13 +249,25 @@ const seedMockData = {
    */
   async seedAll() {
     try {
+      // Connect to MongoDB
+      await connectToMongoDB();
+      
       console.log('Starting mock data seeding process...');
       const users = await this.seedUsers();
       await this.seedDepartments(users);
       await this.seedComplaints(users);
       console.log('Mock data seeding completed successfully');
+      
+      // Close MongoDB connection
+      await mongoose.connection.close();
+      console.log('MongoDB connection closed');
     } catch (error) {
       console.error('Error in seedAll:', error.message);
+      // Make sure to close the connection even if there's an error
+      if (mongoose.connection.readyState !== 0) {
+        await mongoose.connection.close();
+        console.log('MongoDB connection closed after error');
+      }
     }
   }
 };

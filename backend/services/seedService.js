@@ -1,5 +1,34 @@
 // seedService.js - Service for seeding initial data
-const supabase = require('../config/supabase');
+require('dotenv').config();
+const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
+
+// MongoDB connection URI
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/civic-complaints';
+
+// Import models
+const userModel = require('../models/userModel');
+const departmentModel = require('../models/departmentModel');
+
+// Get the Mongoose models directly from the model files
+const User = mongoose.model('User');
+const Department = mongoose.model('Department');
+
+// Number of salt rounds for bcrypt
+const SALT_ROUNDS = 10;
+
+/**
+ * Connect to MongoDB
+ */
+async function connectToMongoDB() {
+  try {
+    await mongoose.connect(MONGODB_URI);
+    console.log('Connected to MongoDB');
+  } catch (error) {
+    console.error('Error connecting to MongoDB:', error.message);
+    throw error;
+  }
+}
 
 /**
  * Seed service functions
@@ -13,15 +42,9 @@ const seedService = {
       console.log('Checking if users need to be seeded...');
       
       // Check if users already exist
-      const { data: existingUsers, error: countError } = await supabase
-        .from('users')
-        .select('count');
+      const count = await User.countDocuments();
       
-      if (countError) {
-        throw countError;
-      }
-      
-      if (!existingUsers || existingUsers.length === 0) {
+      if (count === 0) {
         console.log('No users found, seeding initial users...');
         
         const users = [
@@ -67,14 +90,14 @@ const seedService = {
           }
         ];
         
-        const { error: insertError } = await supabase
-          .from('users')
-          .insert(users);
+        // Hash passwords before inserting
+        const usersWithHashedPasswords = await Promise.all(users.map(async (user) => {
+          const hashedPassword = await bcrypt.hash(user.password, SALT_ROUNDS);
+          return { ...user, password: hashedPassword };
+        }));
         
-        if (insertError) {
-          throw insertError;
-        }
-        
+        // Insert users
+        await User.insertMany(usersWithHashedPasswords);
         console.log('Users seeded successfully');
       } else {
         console.log('Users already exist, skipping seed');
@@ -92,36 +115,23 @@ const seedService = {
       console.log('Checking if departments need to be seeded...');
       
       // Check if departments already exist
-      const { data: existingDepartments, error: countError } = await supabase
-        .from('departments')
-        .select('count');
+      const count = await Department.countDocuments();
       
-      if (countError) {
-        throw countError;
-      }
-      
-      if (!existingDepartments || existingDepartments.length === 0) {
+      if (count === 0) {
         console.log('No departments found, seeding initial departments...');
         
         // First get the head users
-        const { data: headUsers, error: headError } = await supabase
-          .from('users')
-          .select('id, department')
-          .eq('role', 'head');
-        
-        if (headError) {
-          throw headError;
-        }
+        const headUsers = await User.find({ role: 'head' }).select('_id department');
         
         // Create departments with their respective heads
         const departments = [
           { 
             name: 'Roads',
-            head_id: headUsers.find(user => user.department === 'Roads')?.id
+            head_id: headUsers.find(user => user.department === 'Roads')?._id
           },
           { 
             name: 'Sanitation',
-            head_id: headUsers.find(user => user.department === 'Sanitation')?.id
+            head_id: headUsers.find(user => user.department === 'Sanitation')?._id
           },
           { 
             name: 'Electricity',
@@ -137,13 +147,8 @@ const seedService = {
           }
         ];
         
-        const { error: insertError } = await supabase
-          .from('departments')
-          .insert(departments);
-        
-        if (insertError) {
-          throw insertError;
-        }
+        // Insert departments
+        await Department.insertMany(departments);
         
         console.log('Departments seeded successfully');
       } else {
@@ -158,10 +163,40 @@ const seedService = {
    * Run all seed functions
    */
   async seedAll() {
-    await this.seedUsers();
-    await this.seedDepartments();
-    console.log('All seed operations completed');
+    try {
+      // Connect to MongoDB first
+      await connectToMongoDB();
+      
+      console.log('Starting seed operations...');
+      await this.seedUsers();
+      await this.seedDepartments();
+      console.log('All seed operations completed');
+      
+      // Close MongoDB connection
+      await mongoose.connection.close();
+      console.log('MongoDB connection closed');
+    } catch (error) {
+      console.error('Error in seedAll:', error.message);
+      // Make sure to close the connection even if there's an error
+      if (mongoose.connection.readyState !== 0) {
+        await mongoose.connection.close();
+        console.log('MongoDB connection closed after error');
+      }
+    }
   }
 };
+
+// Execute seeding if this script is run directly
+if (require.main === module) {
+  seedService.seedAll()
+    .then(() => {
+      console.log('Seeding script completed');
+      process.exit(0);
+    })
+    .catch(error => {
+      console.error('Seeding script failed:', error);
+      process.exit(1);
+    });
+}
 
 module.exports = seedService;

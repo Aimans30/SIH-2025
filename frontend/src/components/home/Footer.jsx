@@ -2,12 +2,12 @@ import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Container,
-  Grid,
   Typography,
   Link,
   IconButton,
   Divider,
-  Stack
+  Stack,
+  Grid
 } from '@mui/material';
 import FacebookIcon from '@mui/icons-material/Facebook';
 import TwitterIcon from '@mui/icons-material/Twitter';

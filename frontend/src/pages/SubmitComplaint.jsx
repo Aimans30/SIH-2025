@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { submitComplaint } from '../services/api';
+import { submitComplaint, validateImage } from '../services/api';
 import Alert from '../components/common/Alert';
-import '../styles/SubmitComplaint.css';
+import ImageValidationFeedback from '../components/common/ImageValidationFeedback';
+import styles from './SubmitComplaint.module.css';
 import { 
   Container, 
   Typography, 
@@ -29,6 +30,8 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 import CloseIcon from '@mui/icons-material/Close';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import CategoryIcon from '@mui/icons-material/Category';
 
 const SubmitComplaint = () => {
   const navigate = useNavigate();
@@ -50,6 +53,14 @@ const SubmitComplaint = () => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [stream, setStream] = useState(null);
+  const [imageValidation, setImageValidation] = useState({
+    isValid: null,
+    feedback: '',
+    suggestedAction: '',
+    confidence: null
+  });
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationComplete, setValidationComplete] = useState(false);
 
   useEffect(() => {
     // Check if user is logged in
@@ -110,6 +121,87 @@ const SubmitComplaint = () => {
     }
   }, []);
 
+  // Function to manually verify image with Gemini
+  const handleVerifyImage = async () => {
+    console.group('🖼️ Manual Image Verification');
+    
+    // Check if we have all required fields
+    if (!formData.image || !formData.type || !formData.description.trim()) {
+      console.log('❌ Missing required fields for verification');
+      setError('Please fill in all fields (type, description) and upload an image before verifying.');
+      setErrorOpen(true);
+      console.groupEnd();
+      return;
+    }
+    
+    console.log('🔍 Starting manual image verification...');
+    setIsValidating(true);
+    setValidationComplete(false);
+    
+    try {
+      console.log('📤 Sending image to verification service...');
+      console.time('⏱️ Image Verification Duration');
+      const result = await validateImage(formData.image, formData.type, formData.description);
+      console.timeEnd('⏱️ Image Verification Duration');
+      
+      console.log('📥 Verification result received:', result);
+      
+      // Check if the feedback contains JSON that might have a different isValid value
+      if (result.feedback && result.feedback.includes('```json')) {
+        console.log('🔎 Detected JSON in feedback, checking for consistency...');
+        const jsonMatch = result.feedback.match(/\{[\s\S]*?\}/); // Match JSON object
+        if (jsonMatch) {
+          try {
+            const extractedJson = JSON.parse(jsonMatch[0]);
+            if (extractedJson.isValid !== undefined && extractedJson.isValid !== result.isValid) {
+              console.warn('⚠️ Inconsistency detected in component: result.isValid =', result.isValid, 
+                          'but JSON in feedback has isValid =', extractedJson.isValid);
+              console.log('🔄 Correcting isValid value based on JSON in feedback');
+              result.isValid = extractedJson.isValid;
+            }
+          } catch (e) {
+            console.error('❌ Error parsing JSON in feedback:', e);
+          }
+        }
+      }
+      
+      console.log(`🎯 Final result: ${result.isValid ? '✅ Valid' : '❌ Invalid'}`);
+      setImageValidation(result);
+      setValidationComplete(true);
+    } catch (error) {
+      console.error('❌ Error verifying image:', error);
+      console.log('⚠️ Creating fallback verification result');
+      
+      const fallbackResult = {
+        isValid: false,
+        feedback: 'We encountered a technical issue while verifying your image: ' + error.message + '\n\nThis is not related to your image content, but rather a system limitation.',
+        suggestedAction: 'You can try again with the same image or upload a different one that clearly shows the issue'
+      };
+      
+      console.log('🔧 Fallback verification result:', fallbackResult);
+      setImageValidation(fallbackResult);
+      setValidationComplete(true);
+    } finally {
+      console.log(`🔔 Verification process completed`);
+      setIsValidating(false);
+      console.groupEnd();
+    }
+  };
+  
+  // Reset validation state when type or description changes
+  useEffect(() => {
+    if (formData.image && validationComplete) {
+      console.log('🔄 Form fields changed, resetting validation state');
+      setValidationComplete(false);
+      setImageValidation({
+        isValid: null,
+        feedback: '',
+        suggestedAction: '',
+        confidence: null
+      });
+    }
+  }, [formData.type, formData.description]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -126,12 +218,14 @@ const SubmitComplaint = () => {
     const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
     if (!validTypes.includes(file.type)) {
       setError('Please select a valid image file (JPEG or PNG)');
+      setErrorOpen(true);
       return;
     }
     
     // Check file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       setError('Image size should be less than 5MB');
+      setErrorOpen(true);
       return;
     }
     
@@ -147,7 +241,17 @@ const SubmitComplaint = () => {
     };
     reader.readAsDataURL(file);
     
+    // Reset validation state when a new image is selected
+    setImageValidation({
+      isValid: null,
+      feedback: '',
+      suggestedAction: '',
+      confidence: null
+    });
+    setValidationComplete(false);
+    
     setError('');
+    setErrorOpen(false);
   };
 
   // Camera handling functions
@@ -209,6 +313,15 @@ const SubmitComplaint = () => {
             setImagePreview(reader.result);
           };
           reader.readAsDataURL(blob);
+          
+          // Reset validation state when a new image is captured
+          setImageValidation({
+            isValid: null,
+            feedback: '',
+            suggestedAction: '',
+            confidence: null
+          });
+          setValidationComplete(false);
           
           // Close camera
           handleCloseCamera();
@@ -273,7 +386,45 @@ const SubmitComplaint = () => {
       }, 2000);
     } catch (error) {
       console.error('Error submitting complaint:', error);
-      setError(error.message || 'Failed to submit complaint. Please try again.');
+      
+      // Check if the error is related to image validation
+      if (error.message && error.message.includes('Image validation failed')) {
+        // Extract the feedback and suggested action from the error message
+        const errorMsg = error.message;
+        setError(errorMsg);
+        
+        // Try to parse the validation details from the error message
+        try {
+          // Extract feedback and suggested action using regex
+          const feedbackMatch = errorMsg.match(/Image validation failed: (.+?)\./i);
+          const actionMatch = errorMsg.match(/\. ([^.]+)$/i);
+          
+          const feedback = feedbackMatch ? feedbackMatch[1] : 'The image does not appear to match the complaint';
+          const suggestedAction = actionMatch ? actionMatch[1] : 'Please upload a more relevant image';
+          
+          // Update the validation state
+          setImageValidation({
+            isValid: false,
+            feedback,
+            suggestedAction,
+            confidence: 0 // We don't have this from the error message
+          });
+        } catch (parseError) {
+          console.error('Error parsing validation message:', parseError);
+          // Set a generic validation error
+          setImageValidation({
+            isValid: false,
+            feedback: 'The image does not appear to match the complaint type',
+            suggestedAction: 'Please upload a more relevant image',
+            confidence: 0
+          });
+        }
+        
+        // Don't clear the image automatically, let the user decide via the feedback component
+      } else {
+        setError(error.message || 'Failed to submit complaint. Please try again.');
+      }
+      
       setErrorOpen(true);
     } finally {
       setIsSubmitting(false);
@@ -287,12 +438,38 @@ const SubmitComplaint = () => {
   const handleCloseSuccess = () => {
     setSuccessOpen(false);
   };
+  
+  const handleRetryImage = () => {
+    // Clear the current image
+    setFormData(prev => ({
+      ...prev,
+      image: null
+    }));
+    setImagePreview(null);
+    
+    // Reset validation state
+    setImageValidation({
+      isValid: null,
+      feedback: '',
+      suggestedAction: '',
+      confidence: null
+    });
+  };
+  
+  const handleContinueWithoutImage = () => {
+    // Clear the image but keep the validation state for reference
+    setFormData(prev => ({
+      ...prev,
+      image: null
+    }));
+    setImagePreview(null);
+  };
 
   return (
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
-      <Paper elevation={3} sx={{ p: 3 }}>
+      <Paper elevation={3} className={styles.formContainer}>
         <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
-          <Typography variant="h4" component="h1" gutterBottom>
+          <Typography variant="h4" component="h1" className={styles.pageTitle}>
             CivicOne - Report an Issue
           </Typography>
           <Button
@@ -319,65 +496,76 @@ const SubmitComplaint = () => {
         />
         
         {success ? (
-          <Box textAlign="center" py={4}>
-            <Typography variant="h6">Thank you for your report!</Typography>
-            <Typography>Your complaint has been submitted successfully.</Typography>
-            <Typography>You will be redirected to your dashboard shortly...</Typography>
+          <Box textAlign="center" py={4} className={styles.formSection}>
+            <CheckCircleOutlineIcon sx={{ fontSize: 60, color: '#4caf50', mb: 2 }} />
+            <Typography variant="h5" sx={{ mb: 2, color: '#4caf50', fontWeight: 600 }}>Thank you for your report!</Typography>
+            <Typography variant="body1" sx={{ mb: 1 }}>Your complaint has been submitted successfully.</Typography>
+            <Typography variant="body2" color="text.secondary">You will be redirected to your dashboard shortly...</Typography>
           </Box>
         ) : (
           <Box component="form" onSubmit={handleSubmit} noValidate>
             <Grid container spacing={3} sx={{ display: 'flex', flexDirection: 'column' }}>
-              <Grid>
-                <FormControl fullWidth required>
-                  <InputLabel id="issue-type-label">Issue Type</InputLabel>
-                  <Select
-                    labelId="issue-type-label"
-                    name="type"
-                    value={formData.type}
+              <Grid className={styles.formSection}>
+                <Typography variant="h6" className={styles.sectionTitle}>
+                  <CategoryIcon sx={{ mr: 1 }} /> Issue Information
+                </Typography>
+                
+                <div className={styles.inputGroup}>
+                  <FormControl fullWidth required>
+                    <InputLabel id="issue-type-label">Issue Type</InputLabel>
+                    <Select
+                      labelId="issue-type-label"
+                      name="type"
+                      value={formData.type}
+                      onChange={handleInputChange}
+                      label="Issue Type"
+                      className={styles.select}
+                    >
+                      <MenuItem value="">Select Issue Type</MenuItem>
+                      <MenuItem value="Broken Road">Broken Road</MenuItem>
+                      <MenuItem value="Garbage Collection">Garbage Collection</MenuItem>
+                      <MenuItem value="Street Light">Street Light</MenuItem>
+                      <MenuItem value="Water Supply">Water Supply</MenuItem>
+                      <MenuItem value="Other">Other</MenuItem>
+                    </Select>
+                  </FormControl>
+                </div>
+                
+                <div className={styles.inputGroup}>
+                  <TextField
+                    name="description"
+                    label="Description"
+                    multiline
+                    rows={4}
+                    value={formData.description}
                     onChange={handleInputChange}
-                    label="Issue Type"
-                  >
-                    <MenuItem value="">Select Issue Type</MenuItem>
-                    <MenuItem value="Broken Road">Broken Road</MenuItem>
-                    <MenuItem value="Garbage Collection">Garbage Collection</MenuItem>
-                    <MenuItem value="Street Light">Street Light</MenuItem>
-                    <MenuItem value="Water Supply">Water Supply</MenuItem>
-                    <MenuItem value="Other">Other</MenuItem>
-                  </Select>
-                </FormControl>
+                    placeholder="Please describe the issue in detail"
+                    fullWidth
+                    required
+                    className={styles.textarea}
+                  />
+                </div>
               </Grid>
               
-              <Grid>
-                <TextField
-                  name="description"
-                  label="Description"
-                  multiline
-                  rows={4}
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  placeholder="Please describe the issue in detail"
-                  fullWidth
-                  required
-                />
-              </Grid>
-              
-              <Grid>
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Add Image (Optional)
-                  </Typography>
-                  
-                  <Tabs value={imageTab} onChange={handleTabChange} aria-label="image upload options" sx={{ mb: 2 }}>
-                    <Tab icon={<PhotoLibraryIcon />} label="Upload" />
-                    <Tab icon={<CameraAltIcon />} label="Camera" />
-                  </Tabs>
+              <Grid className={styles.formSection}>
+                <Typography variant="h6" className={styles.sectionTitle}>
+                  <CameraAltIcon sx={{ mr: 1 }} /> Add Image (Optional)
+                </Typography>
+                
+                <div className={styles.imageUploadSection}>
+                  <div className={styles.tabsContainer}>
+                    <Tabs value={imageTab} onChange={handleTabChange} aria-label="image upload options" sx={{ mb: 2 }}>
+                      <Tab icon={<PhotoLibraryIcon />} label="Upload" className={imageTab === 0 ? styles.tabActive : styles.tab} />
+                      <Tab icon={<CameraAltIcon />} label="Camera" className={imageTab === 1 ? styles.tabActive : styles.tab} />
+                    </Tabs>
+                  </div>
                   
                   {imageTab === 0 ? (
                     <Button
                       variant="contained"
                       component="label"
                       startIcon={<CloudUploadIcon />}
-                      sx={{ mb: 2 }}
+                      className={styles.uploadButton}
                     >
                       Choose File
                       <input
@@ -392,36 +580,70 @@ const SubmitComplaint = () => {
                       variant="contained"
                       startIcon={<CameraAltIcon />}
                       onClick={handleOpenCamera}
-                      sx={{ mb: 2 }}
+                      className={styles.uploadButton}
                     >
                       Open Camera
                     </Button>
                   )}
-                </Box>
+                </div>
                 
                 {imagePreview && (
-                  <Box sx={{ mt: 2, mb: 2, position: 'relative' }}>
+                  <div className={styles.imagePreviewContainer}>
                     <img 
                       src={imagePreview} 
                       alt="Preview" 
-                      style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '4px' }} 
+                      className={styles.imagePreview}
                     />
                     <IconButton 
                       size="small" 
-                      sx={{ 
-                        position: 'absolute', 
-                        top: 5, 
-                        right: 5, 
-                        bgcolor: 'rgba(255,255,255,0.7)' 
-                      }}
+                      className={styles.removeImageButton}
                       onClick={() => {
                         setImagePreview(null);
                         setFormData(prev => ({ ...prev, image: null }));
+                        // Reset validation state
+                        setImageValidation({
+                          isValid: null,
+                          feedback: '',
+                          suggestedAction: '',
+                          confidence: null
+                        });
                       }}
                     >
                       <CloseIcon fontSize="small" />
                     </IconButton>
-                  </Box>
+                  </div>
+                )}
+                
+                {/* Verify Image Button */}
+                {imagePreview && formData.type && formData.description.trim() && (
+                  <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+                    <Button
+                      variant="contained"
+                      color="secondary"
+                      onClick={handleVerifyImage}
+                      disabled={isValidating}
+                      startIcon={isValidating ? <CircularProgress size={20} /> : <CheckCircleOutlineIcon />}
+                      sx={{ 
+                        backgroundColor: '#9c27b0',
+                        '&:hover': { backgroundColor: '#7b1fa2' },
+                        padding: '10px 20px',
+                        fontWeight: 600
+                      }}
+                    >
+                      {isValidating ? 'Verifying with AI...' : 'Verify Image with AI'}
+                    </Button>
+                  </div>
+                )}
+                
+                {/* Image Validation Feedback */}
+                {imagePreview && imageValidation.isValid !== null && (
+                  <ImageValidationFeedback
+                    isValid={imageValidation.isValid}
+                    feedback={imageValidation.feedback}
+                    suggestedAction={imageValidation.suggestedAction}
+                    onRetry={handleRetryImage}
+                    onContinue={handleContinueWithoutImage}
+                  />
                 )}
                 
                 {/* Camera Dialog */}
@@ -455,28 +677,27 @@ const SubmitComplaint = () => {
                 </Dialog>
               </Grid>
               
-              <Grid>
-                <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Box display="flex" alignItems="center" mb={1}>
-                    <LocationOnIcon color="primary" sx={{ mr: 1 }} />
-                    <Typography variant="subtitle1">Location</Typography>
-                  </Box>
-                  
+              <Grid className={styles.formSection}>
+                <Typography variant="h6" className={styles.sectionTitle}>
+                  <LocationOnIcon sx={{ mr: 1 }} /> Location Information
+                </Typography>
+                
+                <Paper variant="outlined" className={styles.locationSection}>
                   {formData.location.lat && formData.location.lng ? (
-                    <Box>
-                      <Typography variant="body1">
+                    <div className={styles.locationInfo}>
+                      <Typography variant="body1" className={styles.locationAddress}>
                         <strong>Address:</strong> {formData.location.address}
                       </Typography>
-                      <Typography variant="body2">
+                      <Typography variant="body2" className={styles.locationCoordinates}>
                         <strong>Coordinates:</strong> {formData.location.lat.toFixed(6)}, {formData.location.lng.toFixed(6)}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         Location captured automatically from your device
                       </Typography>
-                    </Box>
+                    </div>
                   ) : (
                     <Box display="flex" alignItems="center">
-                      <CircularProgress size={20} sx={{ mr: 1 }} />
+                      <CircularProgress size={20} sx={{ mr: 1 }} className={styles.loadingSpinner} />
                       <Typography>Getting your location...</Typography>
                     </Box>
                   )}
@@ -484,26 +705,41 @@ const SubmitComplaint = () => {
               </Grid>
               
               {error && (
-                <Grid>
+                <Grid className={styles.formSection}>
                   <Alert severity="error">{error}</Alert>
                 </Grid>
               )}
               
-              <Grid>
+              <Grid className={styles.formSection}>
                 <Button
                   type="submit"
                   variant="contained"
                   color="primary"
                   fullWidth
                   size="large"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || 
+                    // Disable if validation is in progress
+                    isValidating ||
+                    // Disable if image validation failed
+                    (validationComplete && !imageValidation.isValid)
+                  }
+                  className={styles.submitButton}
                 >
                   {isSubmitting ? (
                     <>
-                      <CircularProgress size={24} sx={{ mr: 1, color: 'white' }} />
+                      <CircularProgress size={24} className={styles.loadingSpinner} />
                       Submitting...
                     </>
-                  ) : 'Submit Report'}
+                  ) : isValidating ? (
+                    <>
+                      <CircularProgress size={24} className={styles.loadingSpinner} />
+                      Verifying Image...
+                    </>
+                  ) : validationComplete && !imageValidation.isValid ? (
+                    'Image Verification Failed'
+                  ) : (
+                    'Submit Report'
+                  )}
                 </Button>
               </Grid>
             </Grid>

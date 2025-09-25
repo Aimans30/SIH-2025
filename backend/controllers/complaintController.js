@@ -5,6 +5,7 @@ const userModel = require('../models/userModel');
 const storageUtils = require('../config/storage');
 const { successResponse, errorResponse } = require('../utils/responseUtil');
 const { ErrorResponse } = require('../middleware/errorMiddleware');
+const { validateComplaintImage } = require('../utils/geminiUtils');
 
 /**
  * Complaint controller functions
@@ -17,7 +18,7 @@ const complaintController = {
    */
   async submitComplaint(req, res, next) {
     try {
-      const { type, description, lat, lng, address, userId, image_url } = req.body;
+      const { type, description, lat, lng, address, userId } = req.body;
       
       // Validate required fields
       if (!type || !description || !lat || !lng || !address || !userId) {
@@ -30,26 +31,49 @@ const complaintController = {
         return next(new ErrorResponse('User not found', 404));
       }
       
-      // For prototype purposes, always use the provided image_url if available
-      let imageUrl = image_url || null;
+      let imageUrl = null;
       let imageKey = null;
+      let imageValidation = null;
       
-      // If no image_url is provided but there's a file, use the traditional upload method
-      if (!imageUrl && req.file) {
-        const uploadResult = await storageUtils.uploadFile(req.file);
-        
-        if (!uploadResult.success) {
-          console.error('Image upload failed:', uploadResult.error);
-          return next(new ErrorResponse(`Failed to upload image: ${uploadResult.error}`, 500));
+      // Process image if provided
+      if (req.file) {
+        // Validate image using Gemini API
+        try {
+          console.log('Validating image with Gemini API...');
+          imageValidation = await validateComplaintImage(
+            req.file.buffer, 
+            type, 
+            description
+          );
+          
+          console.log('Image validation result:', imageValidation);
+          
+          // If image is not valid, return error
+          if (imageValidation && !imageValidation.isValid) {
+            return next(new ErrorResponse(
+              `Image validation failed: ${imageValidation.feedback}. ${imageValidation.suggestedAction}`, 
+              400
+            ));
+          }
+          
+          // If image is valid, upload it from memory
+          const uploadResult = await storageUtils.uploadFromMemory(req.file);
+          
+          if (!uploadResult.success) {
+            console.error('Image upload failed:', uploadResult.error);
+            return next(new ErrorResponse(`Failed to upload image: ${uploadResult.error}`, 500));
+          }
+          
+          imageUrl = uploadResult.url;
+          imageKey = uploadResult.key;
+        } catch (validationError) {
+          console.error('Error during image validation:', validationError);
+          // Continue with submission even if validation fails
+          // But log the error for monitoring
         }
-        
-        imageUrl = uploadResult.url;
-        imageKey = uploadResult.key;
       }
       
-      // Generate a proper UUID for the complaint ID
-      const { v4: uuidv4 } = require('uuid');
-      const complaintId = uuidv4();
+      // MongoDB will generate its own _id, so we don't need to generate a UUID
       
       // Determine department based on complaint type
       let department;
@@ -72,9 +96,8 @@ const complaintController = {
       
       // Prepare complaint data for database
       const complaintData = {
-        id: complaintId, // Use our generated UUID
-        // Use the actual user UUID from the database
-        user_id: user.id,
+        // Use the actual user ID from the database
+        user_id: user._id,
         type,
         description,
         location_lat: parseFloat(lat) || 0,
@@ -98,7 +121,7 @@ const complaintController = {
       // Create new complaint with Supabase image URL
       const { data: createdComplaint, error: dbError } = await complaintModel.create(complaintData);
 
-      if (dbError || !createdComplaint || !createdComplaint.id) {
+      if (dbError || !createdComplaint || !createdComplaint._id) {
         console.error('Complaint insert failed:', dbError || createdComplaint);
         // If complaint creation fails and we uploaded an image, try to delete it
         if (imageKey) {
@@ -110,7 +133,7 @@ const complaintController = {
 
       // Create response data
       const responseData = {
-        complaintId: createdComplaint.id
+        complaintId: createdComplaint._id
       };
       if (imageUrl) responseData.imageUrl = imageUrl;
 
@@ -137,7 +160,7 @@ const complaintController = {
         return next(new ErrorResponse('User not found', 404));
       }
       
-      const complaints = await complaintModel.getByUserId(user.id);
+      const complaints = await complaintModel.getByUserId(user._id);
       
       return successResponse(res, 200, 'User complaints retrieved successfully', complaints);
     } catch (error) {
@@ -279,6 +302,45 @@ const complaintController = {
       return successResponse(res, 200, 'Statistics retrieved successfully', statistics);
     } catch (error) {
       console.error('Get statistics error:', error);
+      return next(error);
+    }
+  },
+  
+  /**
+   * Transfer a complaint to department head
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   */
+  async transferToHead(req, res, next) {
+    try {
+      const { id } = req.params;
+      
+      // Get the current complaint
+      const complaint = await complaintModel.getById(id);
+      
+      if (!complaint) {
+        return next(new ErrorResponse('Complaint not found', 404));
+      }
+      
+      // Check if complaint is already transferred
+      if (complaint.transferred_to_head) {
+        return next(new ErrorResponse('Complaint already transferred to department head', 400));
+      }
+      
+      console.log(`Transferring complaint ${id} to department head`);
+      
+      // Transfer the complaint to department head
+      const updatedComplaint = await complaintModel.transferToHead(id);
+      
+      if (!updatedComplaint) {
+        console.error('Failed to transfer complaint to department head');
+        return next(new ErrorResponse('Failed to transfer complaint', 500));
+      }
+      
+      console.log('Complaint transferred successfully:', updatedComplaint);
+      return successResponse(res, 200, 'Complaint transferred to department head successfully', updatedComplaint);
+    } catch (error) {
+      console.error('Transfer complaint error:', error);
       return next(error);
     }
   }

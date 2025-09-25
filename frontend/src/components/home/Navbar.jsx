@@ -1,176 +1,88 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  AppBar,
-  Box,
-  Button,
-  Container,
-  IconButton,
-  Menu,
-  MenuItem,
-  Toolbar,
-  Typography,
-  useMediaQuery,
-  useTheme
-} from '@mui/material';
-import MenuIcon from '@mui/icons-material/Menu';
-import ReportProblemIcon from '@mui/icons-material/ReportProblem';
+import CivicLogo from '../common/CivicLogo';
+import styles from './Navbar.module.css';
+
+// Menu icon SVG component
+const MenuIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
+  </svg>
+);
 
 const Navbar = () => {
-  const theme = useTheme();
   const navigate = useNavigate();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const [anchorEl, setAnchorEl] = useState(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const handleMenuOpen = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
+  const handleMenuToggle = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
   const handleNavigation = (path) => {
     navigate(path);
-    handleMenuClose();
+    setIsMobileMenuOpen(false);
   };
 
   const navItems = [
     { label: 'Home', path: '/' },
-    { label: 'Login', path: '/login' },
     { label: 'About', path: '/about' },
-    { label: 'Contact', path: '/contact' }
+    { label: 'Contact', path: '/contact' },
+    { label: 'Login', path: '/login', isLogin: true }
   ];
 
   return (
-    <AppBar 
-      position="static" 
-      sx={{ 
-        background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 50%, #0d47a1 100%)',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-        borderBottom: '1px solid rgba(255,255,255,0.1)',
-        width: '100vw',
-        margin: 0,
-        padding: 0
-      }}
-    >
-      <Container maxWidth={false} sx={{ width: '100%', margin: 0, padding: 0 }}>
-        <Toolbar 
-          disableGutters 
-          sx={{ 
-            minHeight: { xs: 64, md: 80 },
-            px: { xs: 3, md: 6 }
-          }}
-        >
+    <nav className={styles.navbar}>
+      <div className={styles.container}>
+        <div className={styles.toolbar}>
           {/* Logo Section */}
-          <Box 
-            sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              flexGrow: 1,
-              cursor: 'pointer'
-            }}
+          <div 
+            className={styles.logoSection}
             onClick={() => navigate('/')}
           >
-            <ReportProblemIcon 
-              sx={{ 
-                fontSize: { xs: 28, md: 32 }, 
-                mr: 2,
-                color: '#fff'
-              }} 
-            />
-            <Typography
-              variant="h5"
-              component="div"
-              sx={{
-                fontWeight: 700,
-                fontSize: { xs: '1.2rem', md: '1.5rem' },
-                color: '#fff',
-                textShadow: '0 2px 4px rgba(0,0,0,0.3)'
-              }}
-            >
-              Citizen Grievance Portal
-            </Typography>
-          </Box>
+            <CivicLogo size="medium" color="light" />
+          </div>
 
           {/* Desktop Navigation */}
-          {!isMobile ? (
-            <Box sx={{ display: 'flex', gap: 1 }}>
+          <div className={styles.navItems}>
+            {navItems.map((item) => (
+              <button
+                key={item.label}
+                onClick={() => navigate(item.path)}
+                className={`${styles.navButton} ${item.isLogin ? styles.loginButton : ''}`}
+              >
+                <span className={styles.navButtonText}>
+                  {item.label}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            className={styles.mobileMenuButton}
+            onClick={handleMenuToggle}
+            aria-label="menu"
+          >
+            <MenuIcon />
+          </button>
+
+          {/* Mobile Menu */}
+          {isMobileMenuOpen && (
+            <div className={styles.mobileMenu}>
               {navItems.map((item) => (
-                <Button
+                <button
                   key={item.label}
-                  color="inherit"
-                  onClick={() => navigate(item.path)}
-                  sx={{
-                    mx: 1,
-                    px: 3,
-                    py: 1,
-                    fontWeight: 600,
-                    fontSize: '1rem',
-                    borderRadius: 2,
-                    textTransform: 'none',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      backgroundColor: 'rgba(255,255,255,0.1)',
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                    }
-                  }}
+                  onClick={() => handleNavigation(item.path)}
+                  className={`${styles.mobileMenuItem} ${item.isLogin ? styles.login : ''}`}
                 >
                   {item.label}
-                </Button>
+                </button>
               ))}
-            </Box>
-          ) : (
-            /* Mobile Navigation */
-            <>
-              <IconButton
-                size="large"
-                edge="end"
-                color="inherit"
-                aria-label="menu"
-                onClick={handleMenuOpen}
-                sx={{
-                  '&:hover': {
-                    backgroundColor: 'rgba(255,255,255,0.1)'
-                  }
-                }}
-              >
-                <MenuIcon />
-              </IconButton>
-              <Menu
-                anchorEl={anchorEl}
-                open={Boolean(anchorEl)}
-                onClose={handleMenuClose}
-                sx={{
-                  '& .MuiPaper-root': {
-                    backgroundColor: '#1976d2',
-                    color: '#fff',
-                    minWidth: 200
-                  }
-                }}
-              >
-                {navItems.map((item) => (
-                  <MenuItem 
-                    key={item.label}
-                    onClick={() => handleNavigation(item.path)}
-                    sx={{
-                      py: 2,
-                      px: 3,
-                      '&:hover': {
-                        backgroundColor: 'rgba(255,255,255,0.1)'
-                      }
-                    }}
-                  >
-                    {item.label}
-                  </MenuItem>
-                ))}
-              </Menu>
-            </>
+            </div>
           )}
-        </Toolbar>
-      </Container>
-    </AppBar>
+        </div>
+      </div>
+    </nav>
   );
 };
 

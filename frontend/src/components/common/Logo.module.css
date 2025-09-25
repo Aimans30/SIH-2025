@@ -1,0 +1,158 @@
+/* Logo.module.css */
+.logoContainer {
+  display: flex;
+  align-items: center;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.logoIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+.logoIcon::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at top right, rgba(255,255,255,0.3), transparent 70%);
+  z-index: 1;
+}
+
+/* Size variations */
+.small {
+  width: 36px;
+  height: 36px;
+}
+
+.medium {
+  width: 48px;
+  height: 48px;
+}
+
+.large {
+  width: 72px;
+  height: 72px;
+}
+
+/* Color variations */
+.primary {
+  background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+}
+
+.light {
+  background: linear-gradient(135deg, #ffffff 0%, #ffffff 100%);
+}
+
+.dark {
+  background: linear-gradient(135deg, #1a252f 0%, #2980b9 100%);
+}
+
+.icon {
+  position: relative;
+  z-index: 2;
+  color: #fff;
+}
+
+.iconSmall {
+  font-size: 24px;
+}
+
+.iconMedium {
+  font-size: 32px;
+}
+
+.iconLarge {
+  font-size: 48px;
+}
+
+.textContainer {
+  display: flex;
+  flex-direction: column;
+}
+
+.spacingSmall {
+  margin-left: 8px;
+}
+
+.spacingMedium {
+  margin-left: 12px;
+}
+
+.spacingLarge {
+  margin-left: 16px;
+}
+
+.primaryText {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.5px;
+}
+
+.primaryTextSmall {
+  font-size: 1rem;
+}
+
+.primaryTextMedium {
+  font-size: 1.4rem;
+}
+
+.primaryTextLarge {
+  font-size: 2rem;
+}
+
+.textPrimary {
+  color: #2c3e50;
+}
+
+.textLight {
+  color: #ffffff;
+}
+
+.textDark {
+  color: #1a252f;
+}
+
+.secondaryText {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  display: block;
+  margin-top: 2px;
+}
+
+.secondaryTextSmall {
+  font-size: 0.6rem;
+}
+
+.secondaryTextMedium {
+  font-size: 0.7rem;
+}
+
+.secondaryTextLarge {
+  font-size: 0.9rem;
+}
+
+.accentPrimary {
+  color: #3498db;
+}
+
+.accentLight {
+  color: #ffffff;
+}
+
+.accentDark {
+  color: #2980b9;
+}

@@ -18,36 +18,26 @@ const errorHandler = (err, req, res, next) => {
   error.message = err.message;
   
   // Log error for server side debugging
-  console.error(`Error: ${err.message}`.red);
+  console.error(`Error: ${err.message}`);
   console.error(err.stack);
 
-  // Supabase error handling
-  if (err.code) {
+  // MongoDB error handling
+  if (err.name === 'MongoServerError') {
     switch (err.code) {
-      case '23505': // Unique violation
+      case 11000: // Duplicate key error
         error.message = 'Duplicate field value entered';
         error.statusCode = 400;
         break;
-      case '23503': // Foreign key violation
-        error.message = 'Referenced record does not exist';
-        error.statusCode = 400;
-        break;
-      case '42P01': // Undefined table
-        error.message = 'Database error: Table not found';
-        error.statusCode = 500;
-        break;
       default:
-        if (err.code.startsWith('22')) { // Data exception
-          error.message = 'Invalid data format';
-          error.statusCode = 400;
-        } else if (err.code.startsWith('23')) { // Integrity constraint violation
-          error.message = 'Data integrity error';
-          error.statusCode = 400;
-        } else if (err.code.startsWith('28')) { // Invalid authorization specification
-          error.message = 'Authorization error';
-          error.statusCode = 403;
-        }
+        error.message = 'Database error';
+        error.statusCode = 500;
     }
+  }
+  
+  // Handle CastError (invalid ObjectId)
+  if (err.name === 'CastError') {
+    error.message = `Invalid ${err.path}: ${err.value}`;
+    error.statusCode = 400;
   }
 
   // Mongoose validation error

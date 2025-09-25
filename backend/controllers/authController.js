@@ -35,7 +35,7 @@ const authController = {
       // Return user data and token
       res.json({
         user: {
-          id: user.id,
+          id: user._id, // MongoDB uses _id instead of id
           phone: user.phone,
           name: user.name,
           role: user.role,
@@ -80,7 +80,7 @@ const authController = {
       res.status(201).json({
         message: 'User registered successfully',
         user: {
-          id: newUser.id,
+          id: newUser._id, // MongoDB uses _id instead of id
           phone: newUser.phone,
           name: newUser.name,
           role: newUser.role

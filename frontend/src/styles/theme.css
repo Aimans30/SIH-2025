@@ -1,22 +1,33 @@
 /* theme.css - Global theme and styling for the application */
 
 :root {
-  /* Color palette */
-  --primary-color: #1976d2;
-  --primary-light: #bbdefb;
-  --primary-dark: #0d47a1;
+  /* Professional Color palette */
+  --primary-color: #2c3e50;
+  --primary-light: #34495e;
+  --primary-dark: #1a252f;
   
-  --secondary-color: #ff8f00;
-  --secondary-light: #ffecb3;
-  --secondary-dark: #e65100;
+  --secondary-color: #3498db;
+  --secondary-light: #5dade2;
+  --secondary-dark: #2980b9;
   
-  --success-color: #388e3c;
-  --success-light: #c8e6c9;
-  --success-dark: #1b5e20;
+  --accent-color: #16a085;
+  --accent-light: #1abc9c;
+  --accent-dark: #0e6655;
   
-  --danger-color: #d32f2f;
-  --danger-light: #ffcdd2;
-  --danger-dark: #b71c1c;
+  --success-color: #27ae60;
+  --success-light: #2ecc71;
+  --success-dark: #1e8449;
+  
+  --danger-color: #c0392b;
+  --danger-light: #e74c3c;
+  --danger-dark: #922b21;
+  
+  /* Professional Gradients */
+  --gradient-primary: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+  --gradient-secondary: linear-gradient(135deg, var(--secondary-color) 0%, var(--secondary-dark) 100%);
+  --gradient-accent: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-dark) 100%);
+  --gradient-success: linear-gradient(135deg, var(--success-color) 0%, var(--success-dark) 100%);
+  --gradient-danger: linear-gradient(135deg, var(--danger-color) 0%, var(--danger-dark) 100%);
   
   --gray-100: #f8f9fa;
   --gray-200: #e9ecef;
@@ -29,7 +40,7 @@
   --gray-900: #212529;
   
   /* Typography */
-  --font-family: 'Roboto', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-family: 'Poppins', 'Inter', 'Roboto', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --font-size-base: 16px;
   --font-weight-normal: 400;
   --font-weight-medium: 500;
@@ -234,17 +245,6 @@ a:hover {
   padding: 0.25rem 0.5rem;
   font-size: 0.875rem;
   border-radius: var(--border-radius-sm);
-}
-
-/* Form elements */
-.form-group {
-  margin-bottom: var(--spacing-lg);
-}
-
-.form-label {
-  display: block;
-  margin-bottom: var(--spacing-sm);
-  font-weight: var(--font-weight-medium);
 }
 
 .form-control {

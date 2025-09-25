@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getComplaintById, updateComplaintStatus } from '../services/api';
-import '../styles/ComplaintDetail.css';
+import styles from './ComplaintDetail.module.css';
 import ComplaintLocationMap from '../components/maps/ComplaintLocationMap';
 import {
   Container,
@@ -31,8 +31,27 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CategoryIcon from '@mui/icons-material/Category';
 import DescriptionIcon from '@mui/icons-material/Description';
 import DepartmentIcon from '@mui/icons-material/AccountBalance';
+import ForwardIcon from '@mui/icons-material/Forward';
 
 // Map container style is now handled in the ComplaintLocationMap component
+
+// Helper function to format dates consistently
+const formatDate = (dateString) => {
+  if (!dateString) return 'Unknown date';
+  
+  try {
+    return new Date(dateString).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (error) {
+    console.error('Error formatting date:', error, dateString);
+    return 'Invalid date';
+  }
+};
 
 const ComplaintDetail = () => {
   const { id } = useParams();
@@ -56,6 +75,42 @@ const ComplaintDetail = () => {
     const fetchComplaintDetails = async () => {
       try {
         const complaintData = await getComplaintById(id);
+        
+        // Ensure date fields are properly set
+        if (complaintData) {
+          console.log('Complaint data received:', complaintData);
+          console.log('Date fields:', {
+            created_at: complaintData.created_at,
+            createdAt: complaintData.createdAt,
+            updated_at: complaintData.updated_at,
+            updatedAt: complaintData.updatedAt
+          });
+          
+          // If date fields are missing, try to set them from the other format
+          if (!complaintData.created_at && complaintData.createdAt) {
+            complaintData.created_at = complaintData.createdAt;
+          } else if (!complaintData.createdAt && complaintData.created_at) {
+            complaintData.createdAt = complaintData.created_at;
+          }
+          
+          if (!complaintData.updated_at && complaintData.updatedAt) {
+            complaintData.updated_at = complaintData.updatedAt;
+          } else if (!complaintData.updatedAt && complaintData.updated_at) {
+            complaintData.updatedAt = complaintData.updated_at;
+          }
+          
+          // If still no date, set a default
+          if (!complaintData.created_at && !complaintData.createdAt) {
+            complaintData.created_at = complaintData.createdAt = new Date().toISOString();
+            console.log('Setting default created date');
+          }
+          
+          if (!complaintData.updated_at && !complaintData.updatedAt) {
+            complaintData.updated_at = complaintData.updatedAt = new Date().toISOString();
+            console.log('Setting default updated date');
+          }
+        }
+        
         setComplaint(complaintData);
         
         // Map center is now handled in the ComplaintLocationMap component
@@ -115,28 +170,30 @@ const ComplaintDetail = () => {
 
   if (loading) {
     return (
-      <Container maxWidth="md" sx={{ mt: 5, textAlign: 'center' }}>
-        <CircularProgress />
-        <Typography variant="h6" sx={{ mt: 2 }}>Loading complaint details...</Typography>
-      </Container>
+      <div className={styles.loadingContainer}>
+        <CircularProgress className={styles.spinner} />
+        <Typography variant="h6">Loading complaint details...</Typography>
+      </div>
     );
   }
 
   if (!complaint) {
     return (
-      <Container maxWidth="md" sx={{ mt: 5 }}>
-        <Paper elevation={3} sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="h4" gutterBottom>Complaint Not Found</Typography>
-          <Typography variant="body1" paragraph>The complaint with ID {id} could not be found.</Typography>
-          <Button
-            variant="contained"
-            startIcon={<ArrowBackIcon />}
-            onClick={() => navigate(isAdmin ? '/admin-dashboard' : '/user-dashboard')}
-          >
-            Back to Dashboard
-          </Button>
-        </Paper>
-      </Container>
+      <div className={styles.detailContainer}>
+        <div className={styles.content}>
+          <Paper className={styles.paper} style={{textAlign: 'center'}}>
+            <Typography variant="h4" gutterBottom>Complaint Not Found</Typography>
+            <Typography variant="body1" paragraph>The complaint with ID {id} could not be found.</Typography>
+            <Button
+              className={styles.backButton}
+              startIcon={<ArrowBackIcon />}
+              onClick={() => navigate(isAdmin ? '/admin-dashboard' : '/user-dashboard')}
+            >
+              Back to Dashboard
+            </Button>
+          </Paper>
+        </div>
+      </div>
     );
   }
 
@@ -150,35 +207,46 @@ const ComplaintDetail = () => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Paper elevation={3} sx={{ p: 3 }}>
-        <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
-          <Typography variant="h4" component="h1">
-            CivicOne | Complaint Details
-          </Typography>
-          <Button
-            variant="outlined"
-            startIcon={<ArrowBackIcon />}
-            onClick={() => navigate(isAdmin ? '/admin-dashboard' : '/user-dashboard')}
-          >
-            Back to Dashboard
-          </Button>
-        </Box>
+    <div className={styles.detailContainer}>
+      <div className={styles.content}>
+        <Paper className={styles.paper}>
+          <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
+            <Typography variant="h4" component="h1">
+              CivicOne | Complaint Details
+            </Typography>
+            <Button
+              className={styles.backButton}
+              startIcon={<ArrowBackIcon />}
+              onClick={() => navigate(isAdmin ? '/admin-dashboard' : '/user-dashboard')}
+            >
+              Back to Dashboard
+            </Button>
+          </Box>
         
         <Box mb={4}>
           <Grid container spacing={2} alignItems="center">
             <Grid item xs={12} md={8}>
               <Box display="flex" alignItems="center" mb={1}>
                 <Typography variant="h5" component="h2">
-                  Complaint ID: {complaint.id}
+                  Complaint ID: {complaint.id && complaint.id.substring(0, 8)}...
                 </Typography>
                 <Chip 
                   label={complaint.status} 
-                  color={getStatusColor(complaint.status)} 
-                  sx={{ ml: 2 }}
+                  className={`${styles.statusChip} ${
+                    complaint.status === 'Submitted' ? styles.statusSubmitted : 
+                    complaint.status === 'In Progress' ? styles.statusInProgress : 
+                    styles.statusResolved
+                  }`}
                 />
                 {complaint.escalated && (
-                  <Chip label="Escalated" color="error" sx={{ ml: 1 }} />
+                  <Chip label="Escalated" className={`${styles.statusChip} ${styles.escalatedChip}`} />
+                )}
+                {complaint.transferred_to_head && (
+                  <Chip 
+                    icon={<ForwardIcon style={{ color: '#9b59b6' }} />}
+                    label="Transferred to Head" 
+                    className={`${styles.statusChip} ${styles.transferredChip}`}
+                  />
                 )}
               </Box>
               
@@ -187,9 +255,7 @@ const ComplaintDetail = () => {
                   <Box display="flex" alignItems="center">
                     <AccessTimeIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
                     <Typography variant="body2" color="text.secondary">
-                      Reported: {complaint.created_at || complaint.createdAt ? 
-                        new Date(complaint.created_at || complaint.createdAt).toLocaleString() : 
-                        'Unknown date'}
+                      Reported: {formatDate(complaint.created_at || complaint.createdAt)}
                     </Typography>
                   </Box>
                 </Grid>
@@ -213,41 +279,50 @@ const ComplaintDetail = () => {
           </Grid>
         </Box>
         
-        <Divider sx={{ mb: 4 }} />
+        <Divider className={styles.divider} />
         
-        <Grid container spacing={4}>
-          <Grid item xs={12} md={6}>
-            <Card variant="outlined" sx={{ mb: 3 }}>
+        {/* Main Content - Four boxes in one line */}
+        <Grid container spacing={3} mb={4}>
+          {/* Type Card - Small */}
+          <Grid item xs={12} sm={6} md={2} lg={2}>
+            <Card variant="outlined" className={styles.imageCard}>
               <CardContent>
-                <Box display="flex" alignItems="center" mb={2}>
+                <Box display="flex" alignItems="center" mb={1}>
                   <CategoryIcon color="primary" sx={{ mr: 1 }} />
                   <Typography variant="h6">Type</Typography>
                 </Box>
                 <Typography variant="body1">{complaint.type}</Typography>
               </CardContent>
             </Card>
-            
-            <Card variant="outlined" sx={{ mb: 3 }}>
+          </Grid>
+          
+          {/* Description Card - Small */}
+          <Grid item xs={12} sm={6} md={2} lg={2}>
+            <Card variant="outlined" className={styles.imageCard}>
               <CardContent>
-                <Box display="flex" alignItems="center" mb={2}>
+                <Box display="flex" alignItems="center" mb={1}>
                   <DescriptionIcon color="primary" sx={{ mr: 1 }} />
                   <Typography variant="h6">Description</Typography>
                 </Box>
                 <Typography variant="body1">{complaint.description}</Typography>
               </CardContent>
             </Card>
-            
-            <Card variant="outlined">
+          </Grid>
+          
+          {/* Location Card - Small */}
+          <Grid item xs={12} sm={6} md={2} lg={2}>
+            <Card variant="outlined" className={styles.imageCard}>
               <CardContent>
-                <Box display="flex" alignItems="center" mb={2}>
+                <Box display="flex" alignItems="center" mb={1}>
                   <LocationOnIcon color="primary" sx={{ mr: 1 }} />
                   <Typography variant="h6">Location</Typography>
                 </Box>
                 <Typography variant="body1" paragraph>
                   {complaint.location?.address || complaint.location_address || 'No address available'}
                 </Typography>
-                <Box display="flex" alignItems="center" mb={2}>
-                  <Typography variant="body2" color="text.secondary" mr={2}>
+                
+                <Box display="flex" alignItems="center" mb={1} flexWrap="wrap" gap={1}>
+                  <Typography variant="body2" color="text.secondary">
                     {((complaint.location?.lat && complaint.location?.lng) || (complaint.location_lat && complaint.location_lng)) && 
                      ((parseFloat(complaint.location?.lat || complaint.location_lat) !== 0 && 
                        parseFloat(complaint.location?.lng || complaint.location_lng) !== 0)) ? (
@@ -275,68 +350,79 @@ const ComplaintDetail = () => {
                     </Button>
                   )}
                 </Box>
-                
-                {/* Leaflet Map */}
-                <Box sx={{ mt: 2, border: '1px solid #eee', borderRadius: '4px', overflow: 'hidden' }}>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Map View Card - Large */}
+          <Grid item xs={12} sm={12} md={6} lg={6}>
+            <Card variant="outlined" className={styles.imageCard}>
+              <CardContent>
+                <Box display="flex" alignItems="center" mb={1}>
+                  <LocationOnIcon color="primary" sx={{ mr: 1 }} />
+                  <Typography variant="h6">Map View</Typography>
+                </Box>
+                <div className={styles.mapContainer}>
                   <ComplaintLocationMap 
                     lat={complaint.location?.lat || complaint.location_lat} 
                     lng={complaint.location?.lng || complaint.location_lng} 
                     address={complaint.location?.address || complaint.location_address} 
                   />
-                </Box>
+                </div>
               </CardContent>
             </Card>
           </Grid>
-          
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardMedia
-                component="img"
-                image={complaint.image_url || complaint.imageUrl || "https://cdn.shopify.com/s/files/1/0274/7288/7913/files/MicrosoftTeams-image_32.jpg?v=1705315718"}
-                alt={`Image for complaint ${complaint.id}`}
-                sx={{ height: 300, objectFit: 'cover' }}
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src = "https://cdn.shopify.com/s/files/1/0274/7288/7913/files/MicrosoftTeams-image_32.jpg?v=1705315718";
-                }}
-              />
-            </Card>
-            
-            {isAdmin && user.department === complaint.department && (
-              <Box mt={3} p={2} border={1} borderColor="divider" borderRadius={1}>
-                <Typography variant="h6" gutterBottom>Update Status</Typography>
-                <ButtonGroup variant="contained" fullWidth>
-                  <Button
-                    color={complaint.status === 'Submitted' ? 'primary' : 'inherit'}
-                    onClick={() => handleStatusUpdate('Submitted')}
-                    disabled={complaint.status === 'Submitted'}
-                  >
-                    Submitted
-                  </Button>
-                  <Button
-                    color={complaint.status === 'In Progress' ? 'primary' : 'inherit'}
-                    onClick={() => handleStatusUpdate('In Progress')}
-                    disabled={complaint.status === 'In Progress'}
-                  >
-                    In Progress
-                  </Button>
-                  <Button
-                    color={complaint.status === 'Resolved' ? 'primary' : 'inherit'}
-                    onClick={() => handleStatusUpdate('Resolved')}
-                    disabled={complaint.status === 'Resolved'}
-                  >
-                    Resolved
-                  </Button>
-                </ButtonGroup>
-              </Box>
-            )}
-          </Grid>
         </Grid>
+
+        {/* Independent Image Section */}
+        <Box mb={4} className={styles.imageWrapper}>
+          <img
+            className={styles.standAloneImage}
+            src={complaint.image_url || complaint.imageUrl || "https://cdn.shopify.com/s/files/1/0274/7288/7913/files/MicrosoftTeams-image_32.jpg?v=1705315718"}
+            alt={`Image for complaint ${complaint.id}`}
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = "https://cdn.shopify.com/s/files/1/0274/7288/7913/files/MicrosoftTeams-image_32.jpg?v=1705315718";
+            }}
+          />
+        </Box>
+
+        {/* Admin Actions */}
+        {isAdmin && user.department === complaint.department && (
+          <Box mb={4}>
+            <div className={styles.adminActions}>
+              <Typography variant="h6" gutterBottom>Update Status</Typography>
+              <ButtonGroup variant="contained" fullWidth>
+                <Button
+                  className={`${styles.statusButton} ${styles.submittedButton} ${complaint.status === 'Submitted' ? styles.active : ''}`}
+                  onClick={() => handleStatusUpdate('Submitted')}
+                  disabled={complaint.status === 'Submitted'}
+                >
+                  Submitted
+                </Button>
+                <Button
+                  className={`${styles.statusButton} ${styles.inProgressButton} ${complaint.status === 'In Progress' ? styles.active : ''}`}
+                  onClick={() => handleStatusUpdate('In Progress')}
+                  disabled={complaint.status === 'In Progress'}
+                >
+                  In Progress
+                </Button>
+                <Button
+                  className={`${styles.statusButton} ${styles.resolvedButton} ${complaint.status === 'Resolved' ? styles.active : ''}`}
+                  onClick={() => handleStatusUpdate('Resolved')}
+                  disabled={complaint.status === 'Resolved'}
+                >
+                  Resolved
+                </Button>
+              </ButtonGroup>
+            </div>
+          </Box>
+        )}
         
         <Box mt={4}>
-          <Typography variant="h6" gutterBottom>Status Timeline</Typography>
+          <Typography variant="h6" gutterBottom className={styles.centeredTitle}>Status Timeline</Typography>
           
-          <Paper elevation={0} sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 2 }}>
+          <Paper elevation={0} className={styles.statusTimeline}>
             <Box sx={{ display: 'flex', flexDirection: 'column' }}>
               {/* Status Timeline */}
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -351,7 +437,7 @@ const ComplaintDetail = () => {
                 <Box sx={{ flexGrow: 1 }}>
                   <Typography variant="subtitle1">Submitted</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {new Date(complaint.createdAt || complaint.created_at).toLocaleString()}
+                    {formatDate(complaint.createdAt || complaint.created_at)}
                   </Typography>
                 </Box>
                 <Chip 
@@ -381,7 +467,7 @@ const ComplaintDetail = () => {
                   <Typography variant="subtitle1">In Progress</Typography>
                   <Typography variant="body2" color="text.secondary">
                     {complaint.status === 'In Progress' ? 
-                      `Updated on ${new Date(complaint.updatedAt || complaint.updated_at).toLocaleString()}` : 
+                      `Updated on ${formatDate(complaint.updatedAt || complaint.updated_at)}` : 
                       complaint.status === 'Resolved' ? 'Completed' : 'Pending'}
                   </Typography>
                 </Box>
@@ -392,6 +478,37 @@ const ComplaintDetail = () => {
                   <Chip label="Completed" color="success" size="small" variant="outlined" />
                 )}
               </Box>
+              
+              {/* Transferred to Department Head Status - Only show if transferred */}
+              {complaint.transferred_to_head && (
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  mb: 2
+                }}>
+                  <Avatar 
+                    sx={{ 
+                      bgcolor: 'purple',
+                      mr: 2
+                    }}
+                  >
+                    <ForwardIcon fontSize="small" />
+                  </Avatar>
+                  <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="subtitle1">Transferred to Department Head</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {formatDate(complaint.updatedAt || complaint.updated_at)}
+                    </Typography>
+                  </Box>
+                  <Chip 
+                    icon={<ForwardIcon style={{ fontSize: '0.8rem', color: '#9b59b6' }} />}
+                    label="Escalated" 
+                    color="secondary" 
+                    size="small" 
+                    className={styles.transferredChip}
+                  />
+                </Box>
+              )}
               
               {/* Resolved Status */}
               <Box sx={{ 
@@ -411,7 +528,7 @@ const ComplaintDetail = () => {
                   <Typography variant="subtitle1">Resolved</Typography>
                   <Typography variant="body2" color="text.secondary">
                     {complaint.status === 'Resolved' ? 
-                      `Resolved on ${new Date(complaint.updatedAt || complaint.updated_at).toLocaleString()}` : 
+                      `Resolved on ${formatDate(complaint.updatedAt || complaint.updated_at)}` : 
                       'Pending'}
                   </Typography>
                 </Box>
@@ -423,7 +540,8 @@ const ComplaintDetail = () => {
           </Paper>
         </Box>
       </Paper>
-    </Container>
+      </div>
+    </div>
   );
 };
 

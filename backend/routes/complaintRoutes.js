@@ -2,14 +2,12 @@
 const express = require('express');
 const router = express.Router();
 const complaintController = require('../controllers/complaintController');
-const multer = require('../config/upload');
+const { uploadToMemory } = require('../config/upload');
 const auth = require('../middleware/authMiddleware');
 
-// Get the upload middleware
-const upload = multer.upload;
-
 // Submit complaint route - requires authentication
-router.post('/', auth.verifyToken, upload.single('image'), complaintController.submitComplaint);
+// Use memory storage for image validation with Gemini API
+router.post('/', auth.verifyToken, uploadToMemory.single('image'), complaintController.submitComplaint);
 
 // Get complaints for user - requires authentication
 router.get('/user/:userId', auth.verifyToken, complaintController.getUserComplaints);
@@ -25,5 +23,8 @@ router.patch('/:id', auth.hasRole(['admin', 'head']), complaintController.update
 
 // Get statistics for admin dashboard - requires admin or head role
 router.get('/stats/:department', auth.hasRole(['admin', 'head']), complaintController.getStatistics);
+
+// Transfer complaint to department head - requires admin role
+router.post('/:id/transfer-to-head', auth.hasRole(['admin']), complaintController.transferToHead);
 
 module.exports = router;

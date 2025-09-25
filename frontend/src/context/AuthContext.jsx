@@ -12,6 +12,7 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState(null);
   const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   // Check if user is logged in on initial load
@@ -29,6 +30,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('token');
       }
     }
+    setIsLoading(false); // Set loading to false after checking authentication
   }, []);
 
   // Login function
@@ -50,7 +52,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('token', response.token);
       
       console.log('User authenticated:', { 
-        id: response.user.id,
+        id: response.user.id || response.user._id, // Support both MongoDB _id and legacy id
         role: response.user.role,
         phone: response.user.phone
       });
@@ -87,6 +89,7 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setIsAuthenticated(false);
     setUserRole(null);
+    setIsLoading(false);
     navigate('/');
   };
   
@@ -100,6 +103,7 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated,
     userRole,
     user,
+    isLoading,
     login,
     logout,
     getToken

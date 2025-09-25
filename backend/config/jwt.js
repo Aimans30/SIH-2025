@@ -20,7 +20,7 @@ const jwtUtils = {
   generateToken(user) {
     // Create payload with user data (exclude sensitive info)
     const payload = {
-      id: user.id,
+      id: user._id || user.id, // Support both MongoDB _id and legacy id
       phone: user.phone,
       name: user.name,
       role: user.role,

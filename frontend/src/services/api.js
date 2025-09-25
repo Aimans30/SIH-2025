@@ -26,19 +26,30 @@ const normalizeComplaint = (c) => {
   // Log the raw complaint data to help diagnose issues
   console.log('Raw complaint data before normalization:', c);
   
+  // Log date fields for debugging
+  console.log('Date fields in complaint:', {
+    createdAt: c.createdAt,
+    created_at: c.created_at,
+    updatedAt: c.updatedAt,
+    updated_at: c.updated_at
+  });
+  
   // Create a normalized complaint object
   const normalized = {
-    id: c.id,
+    id: c._id || c.id, // Support both MongoDB _id and legacy id
     type: c.type,
     description: c.description,
     status: c.status,
     createdAt: c.createdAt || c.created_at,
     updatedAt: c.updatedAt || c.updated_at,
+    created_at: c.created_at || c.createdAt, // Ensure both formats are available
+    updated_at: c.updated_at || c.updatedAt, // Ensure both formats are available,
     // Handle all possible image URL field variations and provide a fallback
     imageUrl: c.imageUrl || c.image_url || "https://cdn.shopify.com/s/files/1/0274/7288/7913/files/MicrosoftTeams-image_32.jpg?v=1705315718",
     image_url: c.image_url || c.imageUrl || "https://cdn.shopify.com/s/files/1/0274/7288/7913/files/MicrosoftTeams-image_32.jpg?v=1705315718",
     department: c.department,
     history: c.history || [],
+    transferred_to_head: c.transferred_to_head || false,
     
     // Preserve original location fields for backward compatibility
     location_address: c.location_address,
@@ -108,9 +119,13 @@ export const submitComplaint = async (complaintData) => {
     // Create FormData for file upload
     const formData = new FormData();
     
-    // Always use the fixed image URL for prototype purposes
-    const fixedImageUrl = "https://cdn.shopify.com/s/files/1/0274/7288/7913/files/MicrosoftTeams-image_32.jpg?v=1705315718";
-    formData.append('image_url', fixedImageUrl);
+    // Use the actual image if provided
+    if (complaintData.image) {
+      formData.append('image', complaintData.image);
+      console.log('Uploading actual image:', complaintData.image.name);
+    } else {
+      console.log('No image provided for complaint');
+    }
     
     // Append other complaint data
     formData.append('type', complaintData.type);
@@ -122,6 +137,17 @@ export const submitComplaint = async (complaintData) => {
     
     // Get auth headers
     const headers = getAuthHeader();
+    
+    // Remove Content-Type header to let the browser set it with the correct boundary for FormData
+    delete headers['Content-Type'];
+    
+    console.log('Submitting complaint with data:', {
+      type: complaintData.type,
+      description: complaintData.description.substring(0, 30) + '...',
+      hasImage: !!complaintData.image,
+      location: `${complaintData.location.lat}, ${complaintData.location.lng}`,
+      userId: complaintData.userId
+    });
     
     const response = await fetch(`${API_URL}/complaints`, {
       method: 'POST',
@@ -339,12 +365,143 @@ export const getDepartmentStats = async (department) => {
     
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || 'Failed to fetch statistics');
+      throw new Error(error.message || 'Failed to fetch department statistics');
     }
     
-    return await unwrapResponse(response);
+    const data = await unwrapResponse(response);
+    return data;
   } catch (error) {
-    console.error('Get statistics error:', error);
+    console.error('Get department stats error:', error);
+    throw error;
+  }
+};
+
+export const transferComplaintToHead = async (id) => {
+  try {
+    console.log(`Transferring complaint ID: ${id} to department head`);
+    
+    // Get auth headers
+    const headers = {
+      ...getAuthHeader(),
+      'Content-Type': 'application/json'
+    };
+    
+    const url = `${API_URL}/complaints/${id}/transfer-to-head`;
+    console.log('Request URL:', url);
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `Failed to transfer complaint (HTTP ${response.status})`);
+    }
+    
+    const data = await unwrapResponse(response);
+    return normalizeComplaint(data);
+  } catch (error) {
+    console.error('Transfer complaint error:', error);
+    throw error;
+  }
+};
+
+/**
+ * @param {File} image - The image file to validate
+ * @param {string} type - The complaint type
+ * @param {string} description - The complaint description
+ * @returns {Promise<Object>} - Validation result
+ */
+export const validateImage = async (image, type, description) => {
+  console.group('Image Validation - Frontend');
+  try {
+    console.log(`Validating image for type: ${type}`);
+    console.log(`Description: ${description.substring(0, 30)}...`);
+    console.log(`Image details: ${image.name}, ${image.type}, ${image.size} bytes`);
+    
+    // Create FormData for file upload
+    console.log('Creating FormData for image upload...');
+    const formData = new FormData();
+    formData.append('image', image);
+    formData.append('type', type);
+    formData.append('description', description);
+    
+    // Get auth headers
+    const headers = getAuthHeader();
+    console.log('Auth headers obtained');
+    
+    // Remove Content-Type header to let the browser set it with the correct boundary for FormData
+    delete headers['Content-Type'];
+    console.log('Content-Type header removed for proper FormData handling');
+    
+    console.log('Sending validation request to server...');
+    console.time('Image Validation Request');
+    
+    const response = await fetch(`${API_URL}/images/validate`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    
+    console.timeEnd('Image Validation Request');
+    console.log(`Response received with status: ${response.status}`);
+    
+    if (!response.ok) {
+      console.warn(`Non-OK response: ${response.status} ${response.statusText}`);
+      let errPayload = null;
+      try {
+        errPayload = await response.json();
+        console.error('Error payload:', errPayload);
+      } catch (parseError) {
+        console.error('Failed to parse error response:', parseError);
+      }
+      const errMsg = (errPayload && (errPayload.error || errPayload.message)) || `Failed to validate image (HTTP ${response.status})`;
+      throw new Error(errMsg);
+    }
+    
+    const responseData = await response.json();
+    // Log a preview of the response data
+    const previewData = {
+      ...responseData,
+      data: responseData.data ? {
+        ...responseData.data,
+        feedback: responseData.data.feedback?.length > 100 ?
+          responseData.data.feedback.substring(0, 100) + '... (truncated in log only)' :
+          responseData.data.feedback
+      } : null
+    };
+    console.log('Validation response data preview:', previewData);
+    
+    const result = responseData.data;
+    
+    // Check if the feedback contains JSON that might have a different isValid value
+    if (result.feedback && result.feedback.includes('```json')) {
+      console.log('🔎 Detected JSON in feedback, checking for consistency...');
+      const jsonMatch = result.feedback.match(/\{[\s\S]*?\}/); // Match JSON object
+      if (jsonMatch) {
+        try {
+          const extractedJson = JSON.parse(jsonMatch[0]);
+          if (extractedJson.isValid !== undefined && extractedJson.isValid !== result.isValid) {
+            console.warn('⚠️ Inconsistency detected in API response: result.isValid =', result.isValid, 
+                        'but JSON in feedback has isValid =', extractedJson.isValid);
+            console.log('🔄 Correcting isValid value based on JSON in feedback');
+            result.isValid = extractedJson.isValid;
+          }
+        } catch (e) {
+          console.error('❌ Error parsing JSON in feedback:', e);
+        }
+      }
+    }
+    
+    console.log(`Validation result - isValid: ${result.isValid}`);
+    console.log(`Feedback length: ${result.feedback?.length || 0} characters`);
+    
+    console.groupEnd();
+    return result;
+  } catch (error) {
+    console.error('Image validation error:', error);
+    console.groupEnd();
     throw error;
   }
 };

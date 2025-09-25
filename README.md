@@ -15,9 +15,11 @@ This application allows citizens to submit civic complaints with images and geol
 
 ### Backend
 - Node.js with Express
-- Supabase for database and authentication
+- MongoDB for database
+- JWT for authentication
 - RESTful API architecture
 - File uploads with Multer
+- Google Gemini API for image validation
 
 ## Database Structure
 
@@ -100,7 +102,8 @@ frontend/
 ### Prerequisites
 - Node.js (v14 or higher)
 - npm or yarn
-- Supabase account
+- MongoDB database
+- Google Gemini API key
 
 ### Backend Setup
 
@@ -114,9 +117,19 @@ frontend/
    npm install
    ```
 
-3. Update Supabase configuration in `config/supabase.js` with your project URL and anon key.
+3. Create a `.env` file in the backend directory with the following variables:
+   ```
+   MONGODB_URI=your_mongodb_connection_string
+   JWT_SECRET=your_jwt_secret
+   GEMINI_API_KEY=your_gemini_api_key
+   ```
 
-4. Start the server:
+4. Get a Google Gemini API key:
+   - Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Create a new API key
+   - Copy the API key to your `.env` file
+
+5. Start the server:
    ```bash
    npm start
    ```
@@ -158,8 +171,17 @@ For testing purposes, the following users are seeded:
 
 - User authentication and role-based access
 - Complaint submission with image upload and geolocation
+- **AI-powered image validation** using Google Gemini API
 - Automatic department routing based on complaint type
 - Status tracking and updates
 - Admin dashboard with filtering and statistics
 - Automatic escalation of pending complaints after 7 days
 - Mobile-responsive design
+
+## AI Image Validation
+
+The application uses Google's Gemini API to validate that uploaded images match the complaint type and description. This helps ensure that users submit relevant images and reduces the need for manual verification.
+
+- Images are validated against the complaint type and description
+- Users receive immediate feedback if their image doesn't match
+- Admins can be confident that images are relevant to the reported issues

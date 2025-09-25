@@ -4,7 +4,14 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import 'leaflet.heat';
 
-const containerStyle = { width: '100%', height: 400, borderRadius: 8, overflow: 'hidden' };
+const containerStyle = { 
+  width: '100%', 
+  height: 400, 
+  borderRadius: 8, 
+  overflow: 'hidden',
+  position: 'relative',
+  zIndex: 1 // Lower z-index to prevent overlapping with UI elements
+};
 const defaultCenter = [26.9124, 75.7873]; // Jaipur city center
 
 // Minimal React wrapper around leaflet.heat

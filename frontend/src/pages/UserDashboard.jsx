@@ -2,35 +2,54 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getUserComplaints } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import '../styles/Dashboard.css';
+import styles from './UserDashboard.module.css';
+import './UserDashboard.responsive.css'; // Import responsive styles
 import LeafletHeatmap from '../components/dashboard/LeafletHeatmap';
-import {
-  Container,
-  Typography,
-  Box,
-  Button,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
-  AppBar,
-  Toolbar,
-  IconButton,
-  CircularProgress,
-  Card,
-  CardContent,
-  Divider,
-  Grid
-} from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import LogoutIcon from '@mui/icons-material/Logout';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import PersonIcon from '@mui/icons-material/Person';
-import RefreshIcon from '@mui/icons-material/Refresh';
+import CivicLogo from '../components/common/CivicLogo';
+import ResponsiveComplaintList from '../components/dashboard/ResponsiveComplaintList';
+
+// Icon components
+const AddIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+  </svg>
+);
+
+const LogoutIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z" />
+  </svg>
+);
+
+const RefreshIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+  </svg>
+);
+
+const PersonIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+  </svg>
+);
+
+const VisibilityIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
+  </svg>
+);
+
+const ListIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z" />
+  </svg>
+);
+
+const MapIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z" />
+  </svg>
+);
 
 const UserDashboard = () => {
   const [complaints, setComplaints] = useState([]);
@@ -105,131 +124,82 @@ const UserDashboard = () => {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <CircularProgress />
-        <Typography variant="h6" sx={{ ml: 2 }}>Loading dashboard...</Typography>
-      </Box>
+      <div className={styles.loadingContainer}>
+        <div className={styles.spinner}></div>
+        <div className={styles.loadingText}>Loading dashboard...</div>
+      </div>
     );
   }
 
   return (
-    <Box sx={{ flexGrow: 1 }}>
-      <AppBar position="static" color="primary" elevation={0}>
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            CivicOne | User Dashboard
-          </Typography>
-          <Box display="flex" alignItems="center">
-            <Box display="flex" alignItems="center" mr={2}>
-              <PersonIcon sx={{ mr: 1 }} />
-              <Typography variant="body2">{user?.phone}</Typography>
-            </Box>
-            <Button 
-              color="inherit" 
-              onClick={handleLogout}
-              startIcon={<LogoutIcon />}
-            >
-              Logout
-            </Button>
-          </Box>
-        </Toolbar>
-      </AppBar>
-      
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        {/* Heatmap (Leaflet-based, no Google dependencies) */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid size={12}>
-            <LeafletHeatmap complaints={complaints} />
-          </Grid>
-        </Grid>
+    <div className={styles.dashboardContainer}>
+      <div className={styles.content}>
+        {/* Header */}
+        <div className={styles.header}>
+          <div className={styles.welcomeSection}>
+            <h1 className={styles.welcomeTitle}>Welcome, Citizen</h1>
+            <p className={styles.welcomeSubtitle}>
+              Track your complaints and report new issues in your community.
+            </p>
+          </div>
+          
+          <div className={styles.actionButtons}>
+            <div className={styles.userInfo}>
+              <div className={styles.userIcon}>
+                <PersonIcon />
+              </div>
+              <span className={styles.userName}>{user?.phone}</span>
+            </div>
+            
+            <button className={styles.logoutButton} onClick={handleLogout}>
+              <LogoutIcon /> Logout
+            </button>
+          </div>
+        </div>
         
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-          <Box display="flex" alignItems="center">
-            <Typography variant="h4" component="h1" sx={{ mr: 2 }}>
-              My Complaints
-            </Typography>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<RefreshIcon />}
-              onClick={() => fetchComplaints(true)}
-              disabled={refreshing}
-              sx={{ mr: 1 }}
-            >
-              {refreshing ? 'Refreshing...' : 'Refresh'}
-            </Button>
-          </Box>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<AddIcon />}
-            onClick={() => navigate('/submit-complaint')}
-          >
-            Report New Issue
-          </Button>
-        </Box>
+        {/* Map Section */}
+        <div className={styles.mapContainer}>
+          <LeafletHeatmap complaints={complaints} />
+        </div>
         
-        <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-          <TableContainer sx={{ maxHeight: 'calc(100vh - 250px)' }}>
-            <Table stickyHeader aria-label="complaints table">
-              <TableHead>
-                <TableRow>
-                  <TableCell>ID</TableCell>
-                  <TableCell>Type</TableCell>
-                  <TableCell>Description</TableCell>
-                  <TableCell>Date Reported</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell align="center">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {complaints.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} align="center">
-                      <Typography variant="subtitle1" sx={{ py: 3 }}>
-                        You haven't submitted any complaints yet.
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {!user ? 'User information not loaded.' : 
-                         `Logged in as: ${user.phone} (${user.role})`}
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  complaints.map(complaint => (
-                    <TableRow key={complaint.id} hover>
-                      <TableCell>{complaint.id}</TableCell>
-                      <TableCell>{complaint.type}</TableCell>
-                      <TableCell sx={{ maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {complaint.description}
-                      </TableCell>
-                      <TableCell>{new Date(complaint.createdAt).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={complaint.status} 
-                          color={getStatusColor(complaint.status)} 
-                          size="small" 
-                        />
-                      </TableCell>
-                      <TableCell align="center">
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          startIcon={<VisibilityIcon />}
-                          onClick={() => navigate(`/complaint/${complaint.id}`)}
-                        >
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
-      </Container>
-    </Box>
+        {/* Complaints Section */}
+        <div className={styles.complaintsSection}>
+          <div className={styles.complaintsHeader}>
+            <h2 className={styles.sectionTitle}>
+              <ListIcon /> My Complaints
+            </h2>
+            
+            <div className={styles.actionButtons}>
+              <button 
+                className={styles.secondaryButton}
+                onClick={() => fetchComplaints(true)}
+                disabled={refreshing}
+              >
+                <RefreshIcon />
+                {refreshing ? 'Refreshing...' : 'Refresh'}
+              </button>
+              
+              <button 
+                className={styles.primaryButton}
+                onClick={() => navigate('/submit-complaint')}
+              >
+                <AddIcon />
+                Report New Issue
+              </button>
+            </div>
+          </div>
+          
+          <div className={styles.tableContainer}>
+            <ResponsiveComplaintList 
+              complaints={complaints}
+              onRefresh={() => fetchComplaints(true)}
+              refreshing={refreshing}
+              onAddNew={() => navigate('/submit-complaint')}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
